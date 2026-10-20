@@ -8,6 +8,8 @@ import {
   type PixelatelierApi,
   type SaveProjectRequest,
   type SavedFile,
+  type UpdateCheckResult,
+  type UpdatePreferences,
   type WindowState
 } from '../../../shared/api'
 
@@ -114,7 +116,19 @@ const webApi: PixelatelierApi = {
   onMenuEdit(): () => void {
     return () => undefined
   },
-  nativeEdit(): void {}
+  nativeEdit(): void {},
+  // Version navigateur : pas de recherche de mise à jour (application de développement).
+  async checkForUpdates(): Promise<UpdateCheckResult> {
+    return { status: 'unsupported', current: __APP_VERSION__ }
+  },
+  async skipUpdate(): Promise<void> {},
+  async openReleasePage(url: string): Promise<void> {
+    window.open(url, '_blank', 'noopener')
+  },
+  async getUpdatePreferences(): Promise<UpdatePreferences> {
+    return { autoCheck: false }
+  },
+  async setAutoUpdateCheck(): Promise<void> {}
 }
 
 let lastWebClipboardSize = -1

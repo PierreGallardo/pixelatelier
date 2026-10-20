@@ -55,6 +55,47 @@ export async function writeFileAtomic(filePath: string, data: string | Uint8Arra
   }
 }
 
+/** Préférences de l'application conservées entre deux lancements. */
+export interface AppSettings {
+  /** Rechercher une nouvelle version au démarrage. */
+  checkUpdatesOnStartup: boolean
+  /** Version que l'utilisateur a choisi d'ignorer. */
+  skippedVersion: string | null
+}
+
+export const DEFAULT_SETTINGS: AppSettings = { checkUpdatesOnStartup: true, skippedVersion: null }
+
+/** Préférences en JSON ; un fichier absent ou illisible donne les valeurs par défaut. */
+export class SettingsStore {
+  private cache: AppSettings | null = null
+
+  constructor(private readonly storePath: string) {}
+
+  async get(): Promise<AppSettings> {
+    if (this.cache) return { ...this.cache }
+    let raw: Record<string, unknown> = {}
+    try {
+      const parsed = JSON.parse(await fs.readFile(this.storePath, 'utf8'))
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) raw = parsed
+    } catch {
+      // Valeurs par défaut.
+    }
+    this.cache = {
+      checkUpdatesOnStartup: typeof raw.checkUpdatesOnStartup === 'boolean' ? raw.checkUpdatesOnStartup : DEFAULT_SETTINGS.checkUpdatesOnStartup,
+      skippedVersion: typeof raw.skippedVersion === 'string' ? raw.skippedVersion.slice(0, 64) : null
+    }
+    return { ...this.cache }
+  }
+
+  async update(patch: Partial<AppSettings>): Promise<AppSettings> {
+    const next = { ...(await this.get()), ...patch }
+    this.cache = next
+    await fs.mkdir(path.dirname(this.storePath), { recursive: true })
+    await writeFileAtomic(this.storePath, JSON.stringify(next, null, 2))
+    return { ...next }
+  }
+}
+
 /** Liste des fichiers récents, stockée en JSON dans le dossier de données de l'application. */
 export class RecentFiles {
   private cache: string[] | null = null

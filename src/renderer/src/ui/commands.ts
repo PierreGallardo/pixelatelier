@@ -2,6 +2,7 @@ import type { AppActions } from '../app/actions'
 import type { Editor, ToolId } from '../editor/Editor'
 import { isDesktop, isMac } from '../platform/api'
 import type { DialogId } from './useEditor'
+import { updates } from './updateStore'
 
 /**
  * Commandes de l'application : une seule définition sert aux menus, aux
@@ -76,6 +77,8 @@ export type CommandId =
   | 'tool.brushBigger'
   | `tool.${ToolId}`
   | 'help.shortcuts'
+  | 'help.checkUpdates'
+  | 'help.autoUpdateCheck'
   | 'help.about'
 
 export type CommandMap = Record<CommandId, Command>
@@ -266,6 +269,17 @@ export function buildCommands(editor: Editor, actions: AppActions, openDialog: (
     'tool.ellipseFilled': tool('ellipseFilled', 'Ellipse pleine', ['shift+o']),
 
     'help.shortcuts': { label: 'Raccourcis clavier', keys: ['f1'], run: () => openDialog('shortcuts') },
+    'help.checkUpdates': {
+      label: 'Rechercher des mises à jour…',
+      run: () => void updates.check(true, (text, kind) => editor.notify(text, kind)),
+      enabled: () => !updates.snapshot.checking
+    },
+    'help.autoUpdateCheck': {
+      label: 'Rechercher les mises à jour au démarrage',
+      run: () => void updates.setAutoCheck(!updates.snapshot.autoCheck, (text, kind) => editor.notify(text, kind)),
+      enabled: () => isDesktop,
+      checked: () => updates.snapshot.autoCheck
+    },
     'help.about': { label: 'À propos de Pixelatelier', run: () => openDialog('about') }
   }
 }
