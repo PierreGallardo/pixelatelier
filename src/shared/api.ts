@@ -18,8 +18,28 @@ export const IPC = {
   clipboardWrite: 'clipboard:write-image',
   clipboardRead: 'clipboard:read-image',
   menuEdit: 'menu:edit',
-  nativeEdit: 'edit:native'
+  nativeEdit: 'edit:native',
+  updateCheck: 'update:check',
+  updateSkip: 'update:skip',
+  updateOpen: 'update:open-release',
+  updateGetPreferences: 'update:get-preferences',
+  updateSetAutoCheck: 'update:set-auto-check'
 } as const
+
+/** Résultat d'une recherche de nouvelle version. */
+export type UpdateCheckResult =
+  | { status: 'available'; current: string; latest: string; name: string; url: string; publishedAt: string | null }
+  | { status: 'up-to-date'; current: string; latest: string | null }
+  /** Nouvelle version que l'utilisateur a choisi d'ignorer (vérification automatique uniquement). */
+  | { status: 'skipped'; current: string; latest: string }
+  | { status: 'error'; current: string; message: string }
+  /** Recherche impossible dans ce contexte (version navigateur). */
+  | { status: 'unsupported'; current: string }
+
+export interface UpdatePreferences {
+  /** Rechercher une nouvelle version à chaque démarrage. */
+  autoCheck: boolean
+}
 
 /** Commandes d'édition du menu système (macOS) transmises à l'interface. */
 export type EditAction = 'cut' | 'copy' | 'paste' | 'selectAll'
@@ -103,4 +123,12 @@ export interface PixelatelierApi {
   onMenuEdit(callback: (action: EditAction) => void): () => void
   /** Exécute l'action d'édition native (champ de texte ayant le focus). */
   nativeEdit(action: EditAction): void
+  /** Recherche une nouvelle version publiée ; `manual` = demandée par l'utilisateur. */
+  checkForUpdates(manual: boolean): Promise<UpdateCheckResult>
+  /** Ne plus signaler cette version lors des vérifications automatiques. */
+  skipUpdate(version: string): Promise<void>
+  /** Ouvre la page de téléchargement dans le navigateur. */
+  openReleasePage(url: string): Promise<void>
+  getUpdatePreferences(): Promise<UpdatePreferences>
+  setAutoUpdateCheck(enabled: boolean): Promise<void>
 }

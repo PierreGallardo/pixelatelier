@@ -7,7 +7,9 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  net,
   session,
+  shell,
   type IpcMainEvent,
   type IpcMainInvokeEvent
 } from 'electron'
@@ -24,9 +26,12 @@ import {
   type OpenedFile,
   type SaveProjectRequest,
   type SavedFile,
+  type UpdateCheckResult,
+  type UpdatePreferences,
   type WindowState
 } from '../shared/api'
-import { ensureExtension, readOpenedFile, RecentFiles, writeFileAtomic } from './fileService'
+import { ensureExtension, readOpenedFile, RecentFiles, SettingsStore, writeFileAtomic } from './fileService'
+import { checkForUpdates, isReleaseUrl, parseVersion } from './updates'
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL)
 
@@ -41,6 +46,7 @@ let closePromptOpen = false
 let quitting = false
 let lastDirectory: string | null = null
 let recent: RecentFiles
+let settings: SettingsStore
 
 const MAX_EXPORT_BYTES = 512 * 1024 * 1024
 const MAX_CLIPBOARD_BYTES = 64 * 1024 * 1024
@@ -343,7 +349,40 @@ async function handleClipboardRead(event: IpcMainInvokeEvent): Promise<Clipboard
   return { source: 'external', png }
 }
 
+/* ------------------------------ Mises à jour ------------------------------ */
+
+async function handleUpdateCheck(event: IpcMainInvokeEvent, manual: unknown): Promise<UpdateCheckResult> {
+  assertTrustedSender(event)
+  const { skippedVersion } = await settings.get()
+  return checkForUpdates((url, init) => net.fetch(url, init), app.getVersion(), skippedVersion, manual === true)
+}
+
+async function handleUpdateSkip(event: IpcMainInvokeEvent, version: unknown): Promise<void> {
+  assertTrustedSender(event)
+  if (typeof version !== 'string' || !parseVersion(version)) throw new Error('Numéro de version invalide.')
+  await settings.update({ skippedVersion: version })
+}
+
+async function handleUpdateOpen(event: IpcMainInvokeEvent, url: unknown): Promise<void> {
+  assertTrustedSender(event)
+  // Seules les pages de versions du dépôt officiel peuvent être ouvertes.
+  if (typeof url !== 'string' || !isReleaseUrl(url)) throw new Error('Adresse de téléchargement non autorisée.')
+  await shell.openExternal(url)
+}
+
 function registerIpc(): void {
+  ipcMain.handle(IPC.updateCheck, handleUpdateCheck)
+  ipcMain.handle(IPC.updateSkip, handleUpdateSkip)
+  ipcMain.handle(IPC.updateOpen, handleUpdateOpen)
+  ipcMain.handle(IPC.updateGetPreferences, async (event): Promise<UpdatePreferences> => {
+    assertTrustedSender(event)
+    return { autoCheck: (await settings.get()).checkUpdatesOnStartup }
+  })
+  ipcMain.handle(IPC.updateSetAutoCheck, async (event, enabled: unknown) => {
+    assertTrustedSender(event)
+    if (typeof enabled !== 'boolean') throw new Error('Valeur invalide.')
+    await settings.update({ checkUpdatesOnStartup: enabled })
+  })
   ipcMain.handle(IPC.clipboardWrite, handleClipboardWrite)
   ipcMain.handle(IPC.clipboardRead, handleClipboardRead)
   ipcMain.on(IPC.nativeEdit, (event, action: unknown) => {
@@ -416,6 +455,7 @@ app.on('before-quit', () => {
 
 app.whenReady().then(() => {
   recent = new RecentFiles(path.join(app.getPath('userData'), 'recent.json'))
+  settings = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'))
   // Aucune permission (caméra, notifications…) n'est nécessaire.
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
   buildMenu()

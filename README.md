@@ -1,7 +1,7 @@
 # Pixelatelier
 
 Éditeur de pixel art et d'animation image par image pour Windows, macOS et Linux.
-Il fonctionne entièrement hors ligne.
+Il fonctionne hors ligne : sa seule connexion, facultative, sert à vérifier sur GitHub si une nouvelle version est sortie.
 
 Le flux de travail s'inspire des éditeurs de pixel art comme Aseprite : calques, images d'animation, pelures d'oignon et export en GIF ou en planche de sprites. L'interface, le code, la palette, l'icône et les formats sont propres à ce projet. Aucun élément d'Aseprite n'a été repris.
 
@@ -51,6 +51,8 @@ Un `.dmg` ne peut être construit que sur un Mac. Deux possibilités :
   1. Créez un dépôt (privé si vous le souhaitez) et poussez-y le projet.
   2. Dans l'onglet **Actions**, ouvrez « Installateurs », puis cliquez sur **Run workflow**. Les fichiers sont téléchargeables en bas de la page de l'exécution, rubrique « Artifacts ».
   3. Pour publier une version, poussez une étiquette, par exemple `git tag v0.1.0` puis `git push --tags`. Une page « Release » est alors créée avec les installateurs.
+
+> **Numéro de version** : l'étiquette doit correspondre au champ `version` de `package.json` (étiquette `v0.2.0` pour la version `0.2.0`). C'est ce numéro, intégré à l'installateur, que l'application compare à la dernière Release pour annoncer les mises à jour.
 
 L'application Mac est signée « ad hoc » (sans compte développeur Apple), ce qui suffit pour qu'elle démarre, mais macOS ne peut pas en vérifier l'auteur. Si le DMG a été téléchargé, le premier lancement est bloqué. Ouvrez alors **Réglages Système** > **Confidentialité et sécurité** et cliquez sur **Ouvrir quand même**. Vous pouvez aussi retirer l'attribut de quarantaine dans le Terminal :
 
@@ -131,6 +133,16 @@ Pour supprimer ces avertissements, il faut signer les installateurs : un certifi
 - **PNG** : image courante avec les calques visibles et la transparence, agrandissement ×1 à ×32 sans lissage.
 - **GIF animé** : toutes les images en boucle, à la vitesse du document. Palette exacte jusqu'à 255 couleurs plus la transparence, réduction « median cut » au-delà.
 - **Planche de sprites** : disposition horizontale, verticale ou en grille, espacement, agrandissement, et fichier JSON optionnel décrivant la position de chaque image.
+
+### Mises à jour
+- Quelques secondes après le démarrage, l'application consulte la dernière version publiée sur la page « Releases » du dépôt GitHub. Si elle est plus récente, un bandeau propose :
+  - **Télécharger** : ouvre la page de la version dans le navigateur ;
+  - **Ignorer cette version** : elle ne sera plus annoncée au démarrage ;
+  - **Plus tard** (✕) : le bandeau revient au prochain démarrage.
+- **Aide > Rechercher des mises à jour…** lance une vérification à tout moment et indique aussi si l'application est déjà à jour.
+- **Aide > Rechercher les mises à jour au démarrage** désactive la vérification automatique.
+- Sans connexion, ou si GitHub ne répond pas, rien n'est affiché au démarrage. La vérification manuelle, elle, signale l'erreur.
+- Rien n'est téléchargé ni installé automatiquement : on télécharge l'installateur depuis la page, puis on le lance pour remplacer l'ancienne version.
 
 ### Interface
 - Barre de menus Fichier, Édition, Image, Calques, Animation et Aide, navigable au clavier.
@@ -248,6 +260,7 @@ JSON UTF-8 :
   - L'interface n'accède aux fichiers et au presse-papiers qu'au travers de canaux IPC précis, définis dans `shared/api.ts`.
   - Le processus principal vérifie l'expéditeur de chaque message et valide les arguments (types, tailles).
   - Navigation et nouvelles fenêtres interdites, aucune permission accordée (caméra, notifications…).
+  - **Mises à jour** : seul le processus principal accède au réseau, avec une unique requête vers l'API publique de GitHub (sans compte et sans données personnelles). L'interface ne peut faire ouvrir dans le navigateur que les pages de versions du dépôt officiel.
   - Politique de sécurité du contenu (CSP) stricte dans la version compilée.
   - Un fichier « récent » ne peut être rouvert sans boîte de dialogue que s'il figure dans la liste tenue par le processus principal.
 - **Peu de dépendances** : aucune à l'exécution en dehors d'Electron. React et lucide-react (icônes, licence ISC) sont intégrés au bundle. Les encodeurs PNG et GIF, le format de projet et les algorithmes de tracé sont écrits pour le projet. Les fonctions sensibles sont ainsi entièrement testées et ne dépendent pas de bibliothèques peu maintenues (les encodeurs GIF courants ne sont plus mis à jour).
@@ -261,7 +274,7 @@ JSON UTF-8 :
 
 ## Tests
 
-- **Unitaires** (`npm test`, 90 tests) :
+- **Unitaires** (`npm test`, 104 tests) :
   - conversion des coordonnées écran ↔ document et zoom ;
   - ligne de Bresenham dans tous les octants, rectangles, ellipses, brosse ;
   - pot de peinture : bords, diagonales, formes concaves, transparence, mode non contigu, 2048×2048 ;
@@ -274,8 +287,9 @@ JSON UTF-8 :
   - sélection : rectangle, ajout, retrait, inversion, décalage, contour, extraction, effacement et pose de pixels ;
   - baguette magique : zone contiguë, toute l'image, tolérance, transparence ;
   - outil de sélection, dessin confiné, copier, couper, coller (flottant, déplacé, validé, annulé, ramené dans le document), copie fusionnée, suppression, déplacement du contenu ;
-  - suppression d'une couleur en zone, dans toute l'image ou limitée à la sélection, en une seule annulation.
-- **Bout en bout** (`npm run test:e2e`, 59 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image et vérifie les confirmations. Il couvre aussi la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives et le presse-papiers système sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
+  - suppression d'une couleur en zone, dans toute l'image ou limitée à la sélection, en une seule annulation ;
+  - mises à jour : lecture et comparaison des numéros de version (pré-versions comprises), réponse de GitHub (version publiée, aucune version, erreur, adresse étrangère refusée), version ignorée, absence de connexion, préférences.
+- **Bout en bout** (`npm run test:e2e`, 63 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Télécharger, Ignorer, recherche manuelle), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
 - Pendant le développement, les PNG et GIF produits ont aussi été relus avec Pillow (Python), sans aucun pixel différent, y compris pour un GIF de 257×199 aux couleurs aléatoires qui sature le dictionnaire LZW.
 
 ---
@@ -292,5 +306,5 @@ JSON UTF-8 :
 - Les confirmations à la fermeture utilisent les boîtes de dialogue natives. Elles ont été relues dans le code, mais le test de bout en bout ne peut pas les automatiser.
 - Installateurs non signés : avertissement SmartScreen sous Windows, et validation manuelle au premier lancement sur macOS.
 - L'installateur Windows a été construit, installé et lancé sur ce PC. La version macOS et le workflow GitHub n'ont pas pu être exécutés depuis cet environnement Windows. Le code n'utilise rien de propre à Windows.
-- Pas de mise à jour automatique : pour une nouvelle version, relancez l'installateur, qui remplace l'ancienne.
+- Les mises à jour sont annoncées mais pas installées automatiquement : il faut télécharger puis lancer le nouvel installateur, qui remplace l'ancienne version.
 - `npm audit` signale des vulnérabilités modérées dans des dépendances d'**electron-builder** (outil de création des installateurs, absent de l'application distribuée).

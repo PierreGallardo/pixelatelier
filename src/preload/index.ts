@@ -32,7 +32,12 @@ const api: PixelatelierApi = {
       ipcRenderer.removeListener(IPC.menuEdit, listener)
     }
   },
-  nativeEdit: (action) => ipcRenderer.send(IPC.nativeEdit, action)
+  nativeEdit: (action) => ipcRenderer.send(IPC.nativeEdit, action),
+  checkForUpdates: (manual) => ipcRenderer.invoke(IPC.updateCheck, manual),
+  skipUpdate: (version) => ipcRenderer.invoke(IPC.updateSkip, version),
+  openReleasePage: (url) => ipcRenderer.invoke(IPC.updateOpen, url),
+  getUpdatePreferences: () => ipcRenderer.invoke(IPC.updateGetPreferences),
+  setAutoUpdateCheck: (enabled) => ipcRenderer.invoke(IPC.updateSetAutoCheck, enabled)
 }
 
 contextBridge.exposeInMainWorld('pixelatelier', api)

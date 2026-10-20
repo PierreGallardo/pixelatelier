@@ -70,6 +70,22 @@ ipcMain.handle('clipboard:write-image', (_e, png) => {
   captured.clipboardPng = Buffer.from(png)
 })
 ipcMain.handle('clipboard:read-image', () => clipboardRead)
+// Mises à jour simulées : une version 9.9.9 est « publiée »
+const RELEASE_URL = 'https://github.com/PierreGallardo/pixelatelier/releases/tag/v9.9.9'
+let updateResult = { status: 'available', current: '0.1.0', latest: '9.9.9', name: 'v9.9.9', url: RELEASE_URL, publishedAt: '2026-10-20T10:00:00Z' }
+const updateCalls = { check: [], open: [], skip: [] }
+ipcMain.handle('update:get-preferences', () => ({ autoCheck: true }))
+ipcMain.handle('update:check', (_e, manual) => {
+  updateCalls.check.push(manual)
+  return updateResult
+})
+ipcMain.handle('update:open-release', (_e, url) => {
+  updateCalls.open.push(url)
+})
+ipcMain.handle('update:skip', (_e, version) => {
+  updateCalls.skip.push(version)
+})
+ipcMain.handle('update:set-auto-check', () => undefined)
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
@@ -93,7 +109,18 @@ app.whenReady().then(async () => {
   await sleep(600)
 
   const js = (code) => win.webContents.executeJavaScript(code, true)
-  const shot = async (name) => fs.writeFileSync(path.join(OUT, name), (await win.webContents.capturePage()).toPNG())
+  // La capture hors écran peut échouer ponctuellement (compositeur pas encore prêt) : nouvel essai.
+  const shot = async (name) => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        fs.writeFileSync(path.join(OUT, name), (await win.webContents.capturePage()).toPNG())
+        return
+      } catch (err) {
+        if (attempt >= 4) throw err
+        await sleep(400)
+      }
+    }
+  }
   const click = async (x, y, button = 'left', modifiers = []) => {
     win.webContents.sendInputEvent({ type: 'mouseMove', x, y, modifiers })
     win.webContents.sendInputEvent({ type: 'mouseDown', x, y, button, clickCount: 1, modifiers })
@@ -126,6 +153,22 @@ app.whenReady().then(async () => {
   try {
     check('API du preload exposée, Node inaccessible', await js(`typeof window.pixelatelier === 'object' && typeof require === 'undefined' && typeof process === 'undefined'`))
     await shot('01-accueil.png')
+
+    // 0. Nouvelle version disponible : bandeau au démarrage
+    await sleep(3600)
+    const banner = await js(`document.querySelector('.update-banner')?.textContent ?? ''`)
+    check('Bandeau « nouvelle version » affiché au démarrage', updateCalls.check[0] === false && /9\.9\.9 est disponible/.test(banner), banner)
+    await shot('00-mise-a-jour.png')
+    await click(...(await center('.update-banner .btn', 'Télécharger')))
+    check('« Télécharger » ouvre la page de la version', updateCalls.open[0] === RELEASE_URL, updateCalls.open)
+    await click(...(await center('.update-banner .btn', 'Ignorer cette version')))
+    check('« Ignorer cette version » mémorise la version et masque le bandeau', updateCalls.skip[0] === '9.9.9' && (await js(`!document.querySelector('.update-banner')`)))
+    updateResult = { status: 'up-to-date', current: '0.1.0', latest: '0.1.0' }
+    await click(...(await center('.menubar__title', 'Aide')))
+    await click(...(await center('.menu__item', 'Rechercher des mises à jour')))
+    await sleep(200)
+    const upToDate = await js(`document.querySelector('.toast')?.textContent ?? ''`)
+    check('Recherche manuelle (menu Aide) : « à jour »', updateCalls.check[1] === true && /à jour/.test(upToDate), upToDate)
 
     // 1. Création d'un document 32×32 depuis l'accueil
     const preset = await center('.preset', '32 × 32')
