@@ -47,12 +47,19 @@ Un dépôt Git n'est **pas obligatoire** : il sert seulement à construire autom
 Un `.dmg` ne peut être construit que sur un Mac. Deux possibilités :
 
 - **Sur un Mac, sans Git** : copiez le dossier du projet (sans `node_modules`, `out` ni `release`), installez Node.js 22, puis lancez `npm install` et `npm run dist:mac`. Vous obtenez `release/Pixelatelier-<version>-mac-arm64.dmg` pour les Mac Apple Silicon (M1 et suivants) et `…-mac-x64.dmg` pour les Mac Intel. Ouvrez le DMG et glissez Pixelatelier dans **Applications**.
-- **Sans Mac, avec GitHub** : le fichier `.github/workflows/installateurs.yml` construit l'installateur Windows et les deux DMG sur les serveurs de GitHub.
-  1. Créez un dépôt (privé si vous le souhaitez) et poussez-y le projet.
-  2. Dans l'onglet **Actions**, ouvrez « Installateurs », puis cliquez sur **Run workflow**. Les fichiers sont téléchargeables en bas de la page de l'exécution, rubrique « Artifacts ».
-  3. Pour publier une version, poussez une étiquette, par exemple `git tag v0.1.0` puis `git push --tags`. Une page « Release » est alors créée avec les installateurs.
+- **Sans Mac, avec GitHub** : le workflow `.github/workflows/installateurs.yml` construit l'installateur Windows et les deux DMG sur les serveurs de GitHub (voir « Publier une nouvelle version » ci-dessous). Pour obtenir les installateurs sans rien publier, ouvrez l'onglet **Actions**, puis « Installateurs » et **Run workflow**. Les fichiers sont ensuite téléchargeables en bas de la page de l'exécution, rubrique « Artifacts ».
 
-> **Numéro de version** : l'étiquette doit correspondre au champ `version` de `package.json` (étiquette `v0.2.0` pour la version `0.2.0`). C'est ce numéro, intégré à l'installateur, que l'application compare à la dernière Release pour annoncer les mises à jour.
+### Publier une nouvelle version (automatique)
+La publication se déclenche toute seule à chaque mise à jour de la branche `main` :
+
+1. Le développement se fait sur des branches `feature/…`, fusionnées dans `dev` par Pull Request.
+2. Pour sortir une version, une branche `release/vX.Y.Z` est créée depuis `dev`. Seul le champ `version` de `package.json` y change (en suivant SemVer : correctif → `0.1.1`, nouvelle fonctionnalité → `0.2.0`). Elle est fusionnée dans `main` par Pull Request.
+3. À la fusion, le workflow voit que la version `0.2.0` n'est pas encore publiée. Il construit les installateurs, crée l'étiquette `v0.2.0` et publie la Release, avec la liste des Pull Requests incluses. Il faut compter une dizaine de minutes.
+4. Les applications déjà installées affichent alors le bandeau « nouvelle version disponible ».
+
+Si `main` est mise à jour sans changement de version, le workflow l'indique et ne publie rien. Il n'écrase jamais une version déjà publiée.
+
+> **Numéro de version** : c'est le champ `version` de `package.json`, intégré à l'installateur, que l'application compare à la dernière Release pour annoncer les mises à jour. Il doit donc augmenter à chaque publication.
 
 L'application Mac est signée « ad hoc » (sans compte développeur Apple), ce qui suffit pour qu'elle démarre, mais macOS ne peut pas en vérifier l'auteur. Si le DMG a été téléchargé, le premier lancement est bloqué. Ouvrez alors **Réglages Système** > **Confidentialité et sécurité** et cliquez sur **Ouvrir quand même**. Vous pouvez aussi retirer l'attribut de quarantaine dans le Terminal :
 

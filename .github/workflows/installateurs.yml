@@ -1,22 +1,56 @@
-# Construit les installateurs Windows (.exe) et macOS (.dmg Apple Silicon et Intel)
-# sur les machines de GitHub.
+# Publication automatique de Pixelatelier.
 #
-# - Lancement manuel : onglet « Actions » > « Installateurs » > « Run workflow ».
-#   Les fichiers sont ensuite téléchargeables en bas de la page de l'exécution (« Artifacts »).
-# - Publication : pousser une étiquette de version (ex. `git tag v0.1.0 && git push --tags`)
-#   crée une « Release » GitHub contenant les installateurs.
+# À chaque mise à jour de `main` (fusion d'une Pull Request), le workflow lit la version
+# de package.json. Si la Release `v<version>` n'existe pas encore, il construit
+# l'installateur Windows (.exe) et les DMG macOS (Apple Silicon et Intel), crée
+# l'étiquette `v<version>` et publie la Release avec ses notes (titres des Pull Requests).
+# Si cette version est déjà publiée, rien n'est construit : augmentez `version` dans
+# package.json pour publier une nouvelle version.
+#
+# Lancement manuel (onglet « Actions » > « Installateurs » > « Run workflow ») :
+# construit les installateurs sans rien publier ; ils sont téléchargeables dans
+# « Artifacts », en bas de la page de l'exécution.
 name: Installateurs
 
 on:
-  workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+# Deux fusions rapprochées ne publient pas en parallèle.
+concurrency:
+  group: installateurs-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_EVENT_NAME" != "push" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Lancement manuel : installateurs construits sans publication."
+          elif git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::La version $VERSION est déjà publiée (étiquette v$VERSION). Augmentez « version » dans package.json pour publier une nouvelle version."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nouvelle version $VERSION : construction et publication."
+          fi
+
   build:
+    needs: version
+    if: needs.version.outputs.publish == 'true' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -45,8 +79,8 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [version, build]
+    if: needs.version.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -55,4 +89,8 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: v${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Pixelatelier ${{ needs.version.outputs.version }}
+          generate_release_notes: true
           files: installateurs/*
