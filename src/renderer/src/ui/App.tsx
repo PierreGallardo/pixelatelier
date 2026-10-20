@@ -7,6 +7,8 @@ import { buildCommands, buildKeymap, comboFromEvent, isTypingTarget, runCommand 
 import { ColorPanel } from './components/ColorPanel'
 import { LayersPanel } from './components/LayersPanel'
 import { MenuBar } from './components/MenuBar'
+import { UpdateBanner } from './components/UpdateBanner'
+import { updates } from './updateStore'
 import { PalettePanel } from './components/PalettePanel'
 import { StatusBar } from './components/StatusBar'
 import { Timeline } from './components/Timeline'
@@ -80,6 +82,7 @@ function Shell({ dialog, closeDialog }: { dialog: DialogId | null; closeDialog()
   return (
     <div className="app">
       <MenuBar />
+      <UpdateBanner />
       {editor.doc ? <Workspace /> : <WelcomeScreen />}
       <StatusBar />
       <NoticeToast />
@@ -145,6 +148,11 @@ export function App(): React.JSX.Element {
       }),
     [commands]
   )
+
+  // Recherche automatique d'une nouvelle version (quelques secondes après le démarrage).
+  useEffect(() => {
+    void updates.start((text, kind) => editor.notify(text, kind))
+  }, [editor])
 
   // Fermeture de la fenêtre avec modifications : le processus principal demande d'enregistrer.
   useEffect(() => api.onSaveBeforeClose(() => void actions.saveAndClose()), [actions])

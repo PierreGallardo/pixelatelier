@@ -91,7 +91,7 @@ const MENUS: MenuDef[] = [
       'anim.onion'
     ]
   },
-  { label: 'Aide', items: ['help.shortcuts', 'help.about'] }
+  { label: 'Aide', items: ['help.shortcuts', '-', 'help.checkUpdates', 'help.autoUpdateCheck', '-', 'help.about'] }
 ]
 
 /** Barre de menus de l'application (identique sur toutes les plateformes). */

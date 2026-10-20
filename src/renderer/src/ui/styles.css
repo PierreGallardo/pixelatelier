@@ -1371,3 +1371,36 @@ input[type='radio'] {
 .statusbar__selection {
   color: var(--focus);
 }
+
+/* ------------------------------ Mise à jour ------------------------------ */
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 4px 8px 4px 12px;
+  background: linear-gradient(90deg, rgba(89, 211, 194, 0.16), rgba(89, 211, 194, 0.06));
+  border-bottom: 1px solid rgba(89, 211, 194, 0.45);
+  flex: none;
+}
+
+.update-banner__icon {
+  color: var(--focus);
+  flex: none;
+}
+
+.update-banner__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn--small {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.about__update {
+  margin-top: 4px;
+}

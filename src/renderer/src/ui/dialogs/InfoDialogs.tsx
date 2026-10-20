@@ -1,4 +1,5 @@
-import { formatKeys, type CommandId } from '../commands'
+import { formatKeys, runCommand, type CommandId } from '../commands'
+import { useUpdates } from '../updateStore'
 import { useApp } from '../useEditor'
 import { Modal } from './Modal'
 
@@ -118,6 +119,8 @@ export function ShortcutsDialog({ onClose }: { onClose(): void }): React.JSX.Ele
 }
 
 export function AboutDialog({ onClose }: { onClose(): void }): React.JSX.Element {
+  const { commands } = useApp()
+  const { checking, available } = useUpdates()
   return (
     <Modal title="À propos" onClose={onClose} width={420}>
       <div className="about">
@@ -128,7 +131,16 @@ export function AboutDialog({ onClose }: { onClose(): void }): React.JSX.Element
             <div className="muted">Version {__APP_VERSION__}</div>
           </div>
         </div>
-        <p>Éditeur de pixel art et d’animation image par image, entièrement hors ligne.</p>
+        <p>Éditeur de pixel art et d’animation image par image. Il fonctionne hors ligne ; seule la recherche de mises à jour consulte GitHub.</p>
+        <p className="about__update">
+          {available ? (
+            <span>La version {available.latest} est disponible (bandeau en haut de la fenêtre).</span>
+          ) : (
+            <button type="button" className="btn btn--small" disabled={checking} onClick={() => runCommand(commands['help.checkUpdates'])}>
+              {checking ? 'Recherche en cours…' : 'Rechercher des mises à jour'}
+            </button>
+          )}
+        </p>
         <p className="muted small">
           Electron, React, TypeScript et Canvas 2D. Encodeurs PNG et GIF, format de projet .pixatelier et algorithmes de tracé écrits pour ce projet.
           Icônes : Lucide (licence ISC).
