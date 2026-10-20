@@ -1,6 +1,8 @@
 # Pixelatelier
 
-Éditeur de pixel art et d'animation image par image pour Windows, macOS et Linux.
+[![Dernière version](https://img.shields.io/github/v/release/PierreGallardo/pixelatelier?label=derni%C3%A8re%20version)](https://github.com/PierreGallardo/pixelatelier/releases/latest)
+
+Éditeur de pixel art et d'animation image par image pour Windows et macOS.
 Il fonctionne hors ligne : sa seule connexion, facultative, sert à vérifier sur GitHub si une nouvelle version est sortie.
 
 Le flux de travail s'inspire des éditeurs de pixel art comme Aseprite : calques, images d'animation, pelures d'oignon et export en GIF ou en planche de sprites. L'interface, le code, la palette, l'icône et les formats sont propres à ce projet. Aucun élément d'Aseprite n'a été repris.
@@ -9,65 +11,42 @@ Technologies : Electron, React, TypeScript, Vite (via electron-vite) et Canvas 2
 
 ---
 
-## Commandes
+## Télécharger et installer
 
-Il faut Node.js 22.12 ou plus récent.
+Les installateurs de la dernière version sont sur la page **[Releases](https://github.com/PierreGallardo/pixelatelier/releases/latest)**, rubrique **Assets** en bas de la page. Aucun compte GitHub n'est nécessaire.
 
-| Action | Commande |
+| Votre ordinateur | Fichier à télécharger |
 | --- | --- |
-| Installer les dépendances | `npm install` |
-| Lancer en développement (rechargement à chaud) | `npm run dev` |
-| Lancer la version compilée | `npm start` |
-| Vérifier les types | `npm run typecheck` |
-| Tests unitaires (Vitest) | `npm test` |
-| Test de bout en bout (Electron hors écran) | `npm run test:e2e` |
-| Compiler (vérification des types + build) | `npm run build` |
-| Créer l'installateur de la plateforme courante | `npm run dist` |
-| Installateur Windows / macOS | `npm run dist:win` / `npm run dist:mac` |
-| Créer l'application sans installateur (`release/*-unpacked`) | `npm run dist:dir` |
-| Interface seule dans un navigateur (développement) | `npm run dev:web` (http://localhost:5199) |
+| Windows 10 ou 11 (64 bits) | `Pixelatelier-Setup-X.Y.Z.exe` |
+| Mac avec puce Apple (M1, M2, M3…) | `Pixelatelier-X.Y.Z-mac-arm64.dmg` |
+| Mac avec processeur Intel | `Pixelatelier-X.Y.Z-mac-x64.dmg` |
 
-> Le binaire d'Electron est téléchargé au premier lancement s'il manque. Pour le faire à l'avance :
-> `node node_modules/electron/install.js`.
+`X.Y.Z` est le numéro de la version, par exemple `0.1.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
 
-`npm run dist` produit un installateur NSIS sous Windows, un DMG sous macOS et une AppImage sous Linux, dans `release/`. Chaque installateur se construit sur sa propre plateforme. Les paquets ne sont pas signés (voir ci-dessous).
-
----
-
-## Installer sur plusieurs machines
-
-Un dépôt Git n'est **pas obligatoire** : il sert seulement à construire automatiquement la version macOS depuis un PC Windows.
+> **Quel Mac avez-vous ?** Menu Pomme > **À propos de ce Mac**. Une ligne « Puce » (Apple M…) correspond au fichier `arm64`, une ligne « Processeur » (Intel) au fichier `x64`.
 
 ### Windows
-1. `npm run dist:win` produit `release/Pixelatelier-Setup-<version>.exe`.
-2. Copiez ce fichier sur chaque PC (clé USB, cloud…) et lancez-le. L'installation se fait pour l'utilisateur courant, sans droits administrateur. Elle crée un raccourci **Pixelatelier** sur le bureau et dans le menu Démarrer, et l'application se désinstalle depuis « Applications installées ».
-3. L'installateur n'est pas signé : Windows SmartScreen peut afficher « Windows a protégé votre ordinateur ». Cliquez sur **Informations complémentaires**, puis **Exécuter quand même**.
+1. Téléchargez `Pixelatelier-Setup-X.Y.Z.exe`, puis lancez-le.
+2. L'installateur n'est pas signé (une signature nécessite un certificat payant). Windows SmartScreen peut donc afficher « Windows a protégé votre ordinateur » : cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**.
+3. Suivez l'assistant. L'installation se fait pour votre compte, sans droits administrateur, et crée un raccourci **Pixelatelier** sur le bureau et dans le menu Démarrer.
+
+Pour désinstaller : **Paramètres** > **Applications** > **Applications installées** > Pixelatelier > **Désinstaller**.
 
 ### macOS
-Un `.dmg` ne peut être construit que sur un Mac. Deux possibilités :
+1. Téléchargez le `.dmg` qui correspond à votre Mac et ouvrez-le.
+2. Glissez **Pixelatelier** dans le dossier **Applications**.
+3. Au premier lancement, macOS indique qu'il ne peut pas vérifier le développeur, car l'application n'est pas notarisée par Apple. Fermez ce message, puis ouvrez **Réglages Système** > **Confidentialité et sécurité**. Faites défiler jusqu'au message concernant Pixelatelier, cliquez sur **Ouvrir quand même** et confirmez. Cette étape n'est demandée qu'une seule fois.
 
-- **Sur un Mac, sans Git** : copiez le dossier du projet (sans `node_modules`, `out` ni `release`), installez Node.js 22, puis lancez `npm install` et `npm run dist:mac`. Vous obtenez `release/Pixelatelier-<version>-mac-arm64.dmg` pour les Mac Apple Silicon (M1 et suivants) et `…-mac-x64.dmg` pour les Mac Intel. Ouvrez le DMG et glissez Pixelatelier dans **Applications**.
-- **Sans Mac, avec GitHub** : le workflow `.github/workflows/installateurs.yml` construit l'installateur Windows et les deux DMG sur les serveurs de GitHub (voir « Publier une nouvelle version » ci-dessous). Pour obtenir les installateurs sans rien publier, ouvrez l'onglet **Actions**, puis « Installateurs » et **Run workflow**. Les fichiers sont ensuite téléchargeables en bas de la page de l'exécution, rubrique « Artifacts ».
+   Autre solution, dans le Terminal :
 
-### Publier une nouvelle version (automatique)
-La publication se déclenche toute seule à chaque mise à jour de la branche `main` :
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Pixelatelier.app
+   ```
 
-1. Le développement se fait sur des branches `feature/…`, fusionnées dans `dev` par Pull Request.
-2. Pour sortir une version, une branche `release/vX.Y.Z` est créée depuis `dev`. Seul le champ `version` de `package.json` y change (en suivant SemVer : correctif → `0.1.1`, nouvelle fonctionnalité → `0.2.0`). Elle est fusionnée dans `main` par Pull Request.
-3. À la fusion, le workflow voit que la version `0.2.0` n'est pas encore publiée. Il construit les installateurs, crée l'étiquette `v0.2.0` et publie la Release, avec la liste des Pull Requests incluses. Il faut compter une dizaine de minutes.
-4. Les applications déjà installées affichent alors le bandeau « nouvelle version disponible ».
+Pour désinstaller : glissez Pixelatelier depuis **Applications** vers la Corbeille.
 
-Si `main` est mise à jour sans changement de version, le workflow l'indique et ne publie rien. Il n'écrase jamais une version déjà publiée.
-
-> **Numéro de version** : c'est le champ `version` de `package.json`, intégré à l'installateur, que l'application compare à la dernière Release pour annoncer les mises à jour. Il doit donc augmenter à chaque publication.
-
-L'application Mac est signée « ad hoc » (sans compte développeur Apple), ce qui suffit pour qu'elle démarre, mais macOS ne peut pas en vérifier l'auteur. Si le DMG a été téléchargé, le premier lancement est bloqué. Ouvrez alors **Réglages Système** > **Confidentialité et sécurité** et cliquez sur **Ouvrir quand même**. Vous pouvez aussi retirer l'attribut de quarantaine dans le Terminal :
-
-```bash
-xattr -dr com.apple.quarantine /Applications/Pixelatelier.app
-```
-
-Pour supprimer ces avertissements, il faut signer les installateurs : un certificat de signature de code pour Windows, et un compte Apple Developer (99 $/an) pour la signature et la notarisation sur macOS.
+### Mettre à jour
+Quand une nouvelle version est publiée, Pixelatelier l'annonce par un bandeau au démarrage. Vous pouvez aussi vérifier à tout moment avec **Aide** > **Rechercher des mises à jour…**. Le bouton **Télécharger** ouvre la page de la nouvelle version : installez-la comme ci-dessus, elle remplace l'ancienne. Vos projets `.pixatelier` ne sont pas modifiés.
 
 ---
 
@@ -182,6 +161,54 @@ Pour supprimer ces avertissements, il faut signer les installateurs : un certifi
 | Sélection rectangulaire | `M` | Baguette magique | `W` |
 | Couper / Copier / Coller | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | Tout sélectionner / désélectionner | `Ctrl+A` / `Ctrl+D` |
 | Copier tous les calques | `Ctrl+Maj+C` | Inverser la sélection | `Ctrl+Maj+I` |
+
+---
+
+## Développement
+
+### Commandes
+
+Il faut Node.js 22.12 ou plus récent.
+
+| Action | Commande |
+| --- | --- |
+| Installer les dépendances | `npm install` |
+| Lancer en développement (rechargement à chaud) | `npm run dev` |
+| Lancer la version compilée | `npm start` |
+| Vérifier les types | `npm run typecheck` |
+| Tests unitaires (Vitest) | `npm test` |
+| Test de bout en bout (Electron hors écran) | `npm run test:e2e` |
+| Compiler (vérification des types + build) | `npm run build` |
+| Créer l'installateur de la plateforme courante | `npm run dist` |
+| Installateur Windows / macOS | `npm run dist:win` / `npm run dist:mac` |
+| Créer l'application sans installateur (`release/*-unpacked`) | `npm run dist:dir` |
+| Interface seule dans un navigateur (développement) | `npm run dev:web` (http://localhost:5199) |
+
+> Le binaire d'Electron est téléchargé au premier lancement s'il manque. Pour le faire à l'avance :
+> `node node_modules/electron/install.js`.
+
+`npm run dist` produit un installateur NSIS sous Windows, un DMG sous macOS et une AppImage sous Linux, dans `release/`. Chaque installateur se construit sur sa propre plateforme. Les paquets ne sont pas signés (voir ci-dessous).
+
+### Construire les installateurs soi-même
+- **Windows** : `npm run dist:win` produit `release/Pixelatelier-Setup-<version>.exe`.
+- **macOS** : sur un Mac uniquement. Installez Node.js 22, puis lancez `npm install` et `npm run dist:mac`. Vous obtenez `release/Pixelatelier-<version>-mac-arm64.dmg` (Apple Silicon) et `…-mac-x64.dmg` (Intel).
+- **Linux** : `npm run dist` sur une machine Linux produit une AppImage. Ce paquet n'a pas été testé.
+- **Sans Mac** : ouvrez l'onglet **Actions** de GitHub, puis « Installateurs » et **Run workflow**. Le workflow construit l'installateur Windows et les deux DMG sans rien publier. Les fichiers sont téléchargeables en bas de la page de l'exécution, rubrique « Artifacts ».
+
+### Publier une nouvelle version (automatique)
+La publication se déclenche toute seule à chaque mise à jour de la branche `main` :
+
+1. Le développement se fait sur des branches `feature/…`, fusionnées dans `dev` par Pull Request.
+2. Pour sortir une version, une branche `release/vX.Y.Z` est créée depuis `dev`. Seul le champ `version` de `package.json` y change (en suivant SemVer : correctif → `0.1.1`, nouvelle fonctionnalité → `0.2.0`). Elle est fusionnée dans `main` par Pull Request.
+3. À la fusion, le workflow voit que la version `0.2.0` n'est pas encore publiée. Il construit les installateurs, crée l'étiquette `v0.2.0` et publie la Release, avec la liste des Pull Requests incluses. Il faut compter une dizaine de minutes.
+4. Les applications déjà installées affichent alors le bandeau « nouvelle version disponible ».
+
+Si `main` est mise à jour sans changement de version, le workflow l'indique et ne publie rien. Il n'écrase jamais une version déjà publiée.
+
+> **Numéro de version** : c'est le champ `version` de `package.json`, intégré à l'installateur, que l'application compare à la dernière Release pour annoncer les mises à jour. Il doit donc augmenter à chaque publication.
+
+### Signature des installateurs
+Les installateurs ne sont pas signés. L'application Mac est signée « ad hoc », sans compte développeur Apple : cela suffit pour qu'elle démarre, mais macOS ne peut pas en vérifier l'auteur. D'où les avertissements décrits dans « Télécharger et installer ». Pour les supprimer, il faut un certificat de signature de code pour Windows, et un compte Apple Developer (99 $/an) pour la signature et la notarisation sur macOS.
 
 ---
 
