@@ -1,9 +1,19 @@
 import { useSyncExternalStore } from 'react'
-import type { UpdateCheckResult } from '../../../shared/api'
+import type { UpdateCheckResult, UpdateMode } from '../../../shared/api'
 import { api, errorMessage } from '../platform/api'
 import type { NoticeKind } from '../editor/Editor'
 
 export type AvailableUpdate = Extract<UpdateCheckResult, { status: 'available' }>
+
+/** Étape de la mise à jour annoncée par le bandeau. */
+export type UpdatePhase =
+  | { step: 'idle' }
+  | { step: 'downloading'; percent: number }
+  /** Windows : téléchargée et vérifiée, prête à être installée. */
+  | { step: 'ready'; version: string }
+  /** macOS : installateur téléchargé et ouvert. */
+  | { step: 'opened'; path: string }
+  | { step: 'error'; message: string }
 
 export interface UpdateState {
   /** Nouvelle version à annoncer (bandeau), ou `null`. */
@@ -11,6 +21,8 @@ export interface UpdateState {
   /** Recherche automatique au démarrage. */
   autoCheck: boolean
   checking: boolean
+  mode: UpdateMode
+  phase: UpdatePhase
 }
 
 type Notify = (text: string, kind?: NoticeKind) => void
@@ -23,7 +35,7 @@ const STARTUP_DELAY_MS = 3000
  * La requête réseau elle-même est faite par le processus principal.
  */
 class UpdateStore {
-  private state: UpdateState = { available: null, autoCheck: false, checking: false }
+  private state: UpdateState = { available: null, autoCheck: false, checking: false, mode: 'page', phase: { step: 'idle' } }
   private listeners = new Set<() => void>()
   private started = false
 
@@ -45,6 +57,14 @@ class UpdateStore {
   async start(notify: Notify): Promise<void> {
     if (this.started) return
     this.started = true
+    api.onUpdateProgress((p) => {
+      if (this.state.phase.step === 'downloading') this.set({ phase: { step: 'downloading', percent: p.percent } })
+    })
+    try {
+      this.set({ mode: await api.getUpdateMode() })
+    } catch {
+      // Mode « page » par défaut.
+    }
     try {
       const prefs = await api.getUpdatePreferences()
       this.set({ autoCheck: prefs.autoCheck })
@@ -67,7 +87,9 @@ class UpdateStore {
     this.set({ checking: false })
     switch (result.status) {
       case 'available':
-        this.set({ available: result })
+        // Une mise à jour déjà téléchargée reste affichée telle quelle.
+        if (this.state.phase.step === 'idle' || this.state.phase.step === 'error') this.set({ available: result, phase: { step: 'idle' } })
+        else this.set({ available: result })
         break
       case 'up-to-date':
         if (manual) notify(`Pixelatelier est à jour (version ${result.current}).`)
@@ -86,6 +108,34 @@ class UpdateStore {
   /** « Plus tard » : masque le bandeau jusqu'au prochain démarrage. */
   dismiss(): void {
     this.set({ available: null })
+  }
+
+  /**
+   * « Mettre à jour » : télécharge la nouvelle version dans l'application.
+   * En mode `page` (développement, Linux), ouvre la page de téléchargement.
+   */
+  async update(notify: Notify): Promise<void> {
+    if (this.state.mode === 'page') return this.download(notify)
+    const step = this.state.phase.step
+    if (step === 'downloading' || step === 'ready') return
+    this.set({ phase: { step: 'downloading', percent: 0 } })
+    try {
+      const result = await api.downloadUpdate()
+      this.set({ phase: result.status === 'ready' ? { step: 'ready', version: result.version } : { step: 'opened', path: result.path } })
+    } catch (err) {
+      this.set({ phase: { step: 'error', message: errorMessage(err) } })
+    }
+  }
+
+  /** Windows : quitte, installe la mise à jour et relance (après confirmation des modifications). */
+  async install(canDiscard: () => Promise<boolean>, notify: Notify): Promise<void> {
+    if (this.state.phase.step !== 'ready') return
+    if (!(await canDiscard())) return
+    try {
+      await api.installUpdate()
+    } catch (err) {
+      notify(errorMessage(err), 'error')
+    }
   }
 
   /** « Ignorer cette version » : ne plus l'annoncer au démarrage. */

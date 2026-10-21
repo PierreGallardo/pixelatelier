@@ -15,5 +15,5 @@
     "forceConsistentCasingInFileNames": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo"
   },
-  "include": ["tests/**/*", "src/renderer/src/**/*", "src/shared/**/*", "src/main/fileService.ts", "src/main/updates.ts"]
+  "include": ["tests/**/*", "src/renderer/src/**/*", "src/shared/**/*", "src/main/fileService.ts", "src/main/updates.ts", "src/main/downloader.ts"]
 }

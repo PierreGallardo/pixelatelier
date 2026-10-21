@@ -21,7 +21,7 @@ Les installateurs de la dernière version sont sur la page **[Releases](https://
 | Mac avec puce Apple (M1, M2, M3…) | `Pixelatelier-X.Y.Z-mac-arm64.dmg` |
 | Mac avec processeur Intel | `Pixelatelier-X.Y.Z-mac-x64.dmg` |
 
-`X.Y.Z` est le numéro de la version, par exemple `0.2.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
+`X.Y.Z` est le numéro de la version, par exemple `0.3.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
 
 > **Quel Mac avez-vous ?** Menu Pomme > **À propos de ce Mac**. Une ligne « Puce » (Apple M…) correspond au fichier `arm64`, une ligne « Processeur » (Intel) au fichier `x64`.
 
@@ -46,11 +46,20 @@ Pour désinstaller : **Paramètres** > **Applications** > **Applications install
 Pour désinstaller : glissez Pixelatelier depuis **Applications** vers la Corbeille.
 
 ### Mettre à jour
-Quand une nouvelle version est publiée, Pixelatelier l'annonce par un bandeau au démarrage. Vous pouvez aussi vérifier à tout moment avec **Aide** > **Rechercher des mises à jour…**. Le bouton **Télécharger** ouvre la page de la nouvelle version : installez-la comme ci-dessus, elle remplace l'ancienne. Vos projets `.pixatelier` ne sont pas modifiés.
+Quand une nouvelle version est publiée, Pixelatelier l'annonce par un bandeau au démarrage. Vous pouvez aussi vérifier à tout moment avec **Aide** > **Rechercher des mises à jour…**. Cliquez ensuite sur **Mettre à jour** :
+
+- **Windows** : la nouvelle version est téléchargée dans le logiciel (avec une barre de progression), puis **Redémarrer et installer** l'installe et relance Pixelatelier. Si un dessin n'est pas enregistré, le logiciel propose d'abord de l'enregistrer. Avec **À la fermeture**, l'installation se fera quand vous quitterez le logiciel.
+- **macOS** : l'installateur adapté à votre Mac est téléchargé dans « Téléchargements » puis ouvert. Glissez Pixelatelier dans **Applications** pour remplacer l'ancienne version.
+
+Vos projets `.pixatelier` ne sont pas modifiés. La mise à jour automatique est disponible à partir de la version 0.3.0 : depuis une version plus ancienne, le bouton **Télécharger** ouvre la page de la nouvelle version, à installer comme ci-dessus.
 
 ---
 
 ## Nouveautés
+
+### 0.3.0
+- **Mise à jour depuis le logiciel** : le bouton **Mettre à jour** du bandeau télécharge la nouvelle version. Sous Windows, elle s'installe d'un clic et le logiciel redémarre tout seul ; sous macOS, l'installateur est téléchargé puis ouvert.
+- Pour passer de la 0.1.0 ou de la 0.2.0 à la 0.3.0, téléchargez une dernière fois l'installateur depuis la page des versions : les mises à jour suivantes se feront depuis le logiciel.
 
 ### 0.2.0
 - **Mode pixel parfait** pour le crayon et la gomme (touche `P`) : les angles en « L » des traits à main levée sont retirés pour des lignes d'un pixel d'épaisseur.
@@ -138,13 +147,13 @@ Le détail de chaque version (fichiers et liste des modifications) est sur la pa
 
 ### Mises à jour
 - Quelques secondes après le démarrage, l'application consulte la dernière version publiée sur la page « Releases » du dépôt GitHub. Si elle est plus récente, un bandeau propose :
-  - **Télécharger** : ouvre la page de la version dans le navigateur ;
+  - **Mettre à jour** : télécharge la nouvelle version dans le logiciel. Sous Windows, elle s'installe ensuite d'un clic (**Redémarrer et installer**) ou à la fermeture du logiciel ; sous macOS, l'installateur téléchargé est ouvert. En développement et sous Linux, le bouton **Télécharger** ouvre la page de la version ;
   - **Ignorer cette version** : elle ne sera plus annoncée au démarrage ;
   - **Plus tard** (✕) : le bandeau revient au prochain démarrage.
 - **Aide > Rechercher des mises à jour…** lance une vérification à tout moment et indique aussi si l'application est déjà à jour.
 - **Aide > Rechercher les mises à jour au démarrage** désactive la vérification automatique.
 - Sans connexion, ou si GitHub ne répond pas, rien n'est affiché au démarrage. La vérification manuelle, elle, signale l'erreur.
-- Rien n'est téléchargé ni installé automatiquement : on télécharge l'installateur depuis la page, puis on le lance pour remplacer l'ancienne version.
+- Le téléchargement est vérifié avant l'installation (empreinte SHA-512 sous Windows, taille exacte sous macOS) et ne se fait qu'à la demande : rien n'est installé sans un clic de l'utilisateur.
 
 ### Interface
 - Barre de menus Fichier, Édition, Image, Calques, Animation et Aide, navigable au clavier.
@@ -236,7 +245,9 @@ src/
 ├── main/                  Processus principal Electron
 │   ├── index.ts           Fenêtre, sécurité, boîtes de dialogue, gestionnaires IPC, confirmation à la fermeture
 │   ├── fileService.ts     Lecture, écriture atomique, fichiers récents, préférences (Node pur, testé)
-│   └── updates.ts         Recherche de nouvelle version sur GitHub (comparaison SemVer, testé)
+│   ├── updates.ts         Recherche de nouvelle version sur GitHub (comparaison SemVer, testé)
+│   ├── autoUpdate.ts      Téléchargement et installation des mises à jour (electron-updater sous Windows)
+│   └── downloader.ts      Téléchargement de fichier avec progression (testé)
 ├── preload/index.ts       Pont contextBridge minimal et typé (window.pixelatelier)
 ├── shared/api.ts          Contrat IPC partagé (canaux et types)
 └── renderer/src/
@@ -316,7 +327,8 @@ JSON UTF-8 :
   - **Mises à jour** : seul le processus principal accède au réseau, avec une unique requête vers l'API publique de GitHub (sans compte et sans données personnelles). L'interface ne peut faire ouvrir dans le navigateur que les pages de versions du dépôt officiel.
   - Politique de sécurité du contenu (CSP) stricte dans la version compilée.
   - Un fichier « récent » ne peut être rouvert sans boîte de dialogue que s'il figure dans la liste tenue par le processus principal.
-- **Peu de dépendances** : aucune à l'exécution en dehors d'Electron. React et lucide-react (icônes, licence ISC) sont intégrés au bundle. Les encodeurs PNG et GIF, le format de projet et les algorithmes de tracé sont écrits pour le projet. Les fonctions sensibles sont ainsi entièrement testées et ne dépendent pas de bibliothèques peu maintenues (les encodeurs GIF courants ne sont plus mis à jour).
+- **Peu de dépendances** : une seule à l'exécution en dehors d'Electron, electron-updater (mises à jour). React et lucide-react (icônes, licence ISC) sont intégrés au bundle. Les encodeurs PNG et GIF, le format de projet et les algorithmes de tracé sont écrits pour le projet. Les fonctions sensibles sont ainsi entièrement testées et ne dépendent pas de bibliothèques peu maintenues (les encodeurs GIF courants ne sont plus mis à jour).
+- **Mises à jour** avec **electron-updater** sous Windows : bibliothèque maintenue par le projet electron-builder, qui lit le fichier `latest.yml` publié avec chaque Release, vérifie l'empreinte SHA-512 de l'installateur et le lance en mode silencieux. La publication automatique (`installateurs.yml`) joint ce fichier à chaque Release. Sur macOS, cette mise à jour intégrée exige une application signée : l'application télécharge donc simplement le bon DMG.
 - **Compression** par les flux natifs `CompressionStream` / `DecompressionStream`, disponibles dans Chromium et dans Node.js : aucune bibliothèque zlib à embarquer.
 - **Pot de peinture itératif** par segments horizontaux avec une pile explicite d'entiers : pas de récursion, la mémoire reste bornée. Testé sur 2048×2048 px.
 - **Ellipses** : algorithme entier de A. Zingl, valable pour les diamètres pairs comme impairs, symétrique et sans pixel hors du rectangle englobant.
@@ -327,7 +339,7 @@ JSON UTF-8 :
 
 ## Tests
 
-- **Unitaires** (`npm test`, 128 tests) :
+- **Unitaires** (`npm test`, 134 tests) :
   - conversion des coordonnées écran ↔ document et zoom ;
   - ligne de Bresenham dans tous les octants, rectangles, ellipses, brosse ;
   - pot de peinture : bords, diagonales, formes concaves, transparence, mode non contigu, 2048×2048 ;
@@ -343,8 +355,9 @@ JSON UTF-8 :
   - suppression d'une couleur en zone, dans toute l'image ou limitée à la sélection, en une seule annulation ;
   - mode pixel parfait : détection des angles en L, escaliers, mouvements rapides, couleur d'origine restaurée, brosse > 1 px, gomme ;
   - symétrie : points et rectangles reflétés (axe entre deux pixels ou au milieu d'un pixel, un ou deux axes), brosse paire, crayon, formes, gomme, pot de peinture, pixel parfait, sélection, changement de taille ;
+  - téléchargement des mises à jour : choix du DMG selon le processeur, fichiers limités au dépôt officiel, progression, fichier incomplet refusé, nom de fichier libre ;
   - mises à jour : lecture et comparaison des numéros de version (pré-versions comprises), réponse de GitHub (version publiée, aucune version, erreur, adresse étrangère refusée), version ignorée, absence de connexion, préférences.
-- **Bout en bout** (`npm run test:e2e`, 67 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Télécharger, Ignorer, recherche manuelle), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
+- **Bout en bout** (`npm run test:e2e`, 70 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Ignorer, recherche manuelle, téléchargement avec progression, « Redémarrer et installer »), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
 - Pendant le développement, les PNG et GIF produits ont aussi été relus avec Pillow (Python), sans aucun pixel différent, y compris pour un GIF de 257×199 aux couleurs aléatoires qui sature le dictionnaire LZW.
 
 ---
@@ -361,5 +374,5 @@ JSON UTF-8 :
 - Les confirmations à la fermeture utilisent les boîtes de dialogue natives. Elles ont été relues dans le code, mais le test de bout en bout ne peut pas les automatiser.
 - Installateurs non signés : avertissement SmartScreen sous Windows, et validation manuelle au premier lancement sur macOS.
 - Les installateurs Windows et macOS sont construits et publiés par GitHub Actions. L'application est testée sous Windows ; la version macOS n'a pas encore été vérifiée sur un vrai Mac.
-- Les mises à jour sont annoncées mais pas installées automatiquement : il faut télécharger puis lancer le nouvel installateur, qui remplace l'ancienne version.
+- Mise à jour automatique complète sous Windows uniquement. Sur Mac, l'application n'étant pas signée par Apple, l'installateur est téléchargé et ouvert mais il faut glisser l'application soi-même ; ce parcours n'a pas encore été testé sur un vrai Mac.
 - `npm audit` signale des vulnérabilités modérées dans des dépendances d'**electron-builder** (outil de création des installateurs, absent de l'application distribuée).

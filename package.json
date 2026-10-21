@@ -1,7 +1,7 @@
 {
   "name": "pixelatelier",
   "productName": "Pixelatelier",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Éditeur de pixel art et d'animation de bureau (Electron + React + TypeScript)",
   "main": "./out/main/index.js",
   "author": "Pixelatelier",
@@ -20,6 +20,9 @@
     "dist:dir": "npm run build && electron-builder --dir",
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
@@ -96,6 +99,14 @@
       "category": "Graphics",
       "icon": "build/icon.png",
       "artifactName": "Pixelatelier-${version}-${arch}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "PierreGallardo",
+        "repo": "pixelatelier",
+        "releaseType": "release"
+      }
+    ]
   }
 }

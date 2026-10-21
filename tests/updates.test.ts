@@ -65,7 +65,7 @@ describe('dernière version publiée sur GitHub', () => {
     const info = await fetchLatestRelease(fetch, '0.1.0')
     expect(fetch.calls[0].url).toBe('https://api.github.com/repos/PierreGallardo/pixelatelier/releases/latest')
     expect(fetch.calls[0].headers?.['User-Agent']).toBe('Pixelatelier/0.1.0')
-    expect(info).toEqual({ version: '0.2.0', name: 'Pixelatelier v0.2.0', url: `${RELEASES_PAGE}/tag/v0.2.0`, publishedAt: '2026-10-20T10:00:00Z' })
+    expect(info).toEqual({ version: '0.2.0', name: 'Pixelatelier v0.2.0', url: `${RELEASES_PAGE}/tag/v0.2.0`, publishedAt: '2026-10-20T10:00:00Z', assets: [] })
   })
 
   it('aucune version publiée (404) : erreur dédiée', async () => {
@@ -86,7 +86,7 @@ describe('dernière version publiée sur GitHub', () => {
 })
 
 describe('décision d’afficher une mise à jour', () => {
-  const info = { version: '0.2.0', name: 'v0.2.0', url: RELEASES_PAGE, publishedAt: null }
+  const info = { version: '0.2.0', name: 'v0.2.0', url: RELEASES_PAGE, publishedAt: null, assets: [] }
 
   it('signale une version plus récente', () => {
     expect(evaluateUpdate('0.1.0', info, null, false)).toMatchObject({ status: 'available', current: '0.1.0', latest: '0.2.0' })

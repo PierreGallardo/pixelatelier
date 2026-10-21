@@ -1411,3 +1411,31 @@ input[type='radio'] {
   gap: 4px;
   margin-right: 12px;
 }
+
+.update-banner--error {
+  background: linear-gradient(90deg, rgba(255, 95, 109, 0.16), rgba(255, 95, 109, 0.06));
+  border-bottom-color: rgba(255, 95, 109, 0.5);
+}
+
+.update-banner__progress {
+  width: 220px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-0);
+  overflow: hidden;
+  flex: none;
+}
+
+.update-banner__progress span {
+  display: block;
+  height: 100%;
+  background: var(--focus);
+  transition: width 0.2s;
+}
+
+.update-banner__percent {
+  width: 44px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 12px;
+}
