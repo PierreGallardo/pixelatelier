@@ -73,7 +73,20 @@ ipcMain.handle('clipboard:read-image', () => clipboardRead)
 // Mises à jour simulées : une version 9.9.9 est « publiée »
 const RELEASE_URL = 'https://github.com/PierreGallardo/pixelatelier/releases/tag/v9.9.9'
 let updateResult = { status: 'available', current: '0.1.0', latest: '9.9.9', name: 'v9.9.9', url: RELEASE_URL, publishedAt: '2026-10-20T10:00:00Z' }
-const updateCalls = { check: [], open: [], skip: [] }
+const updateCalls = { check: [], open: [], skip: [], download: 0, install: 0 }
+// Mode « install » (comme l'application Windows installée) : téléchargement simulé avec progression.
+ipcMain.handle('update:mode', () => 'install')
+ipcMain.handle('update:download', async (e) => {
+  updateCalls.download++
+  for (const percent of [30, 70, 100]) {
+    await new Promise((r) => setTimeout(r, 150))
+    e.sender.send('update:progress', { percent, transferred: percent, total: 100 })
+  }
+  return { status: 'ready', version: updateResult.latest }
+})
+ipcMain.handle('update:install', () => {
+  updateCalls.install++
+})
 ipcMain.handle('update:get-preferences', () => ({ autoCheck: true }))
 ipcMain.handle('update:check', (_e, manual) => {
   updateCalls.check.push(manual)
@@ -159,17 +172,30 @@ app.whenReady().then(async () => {
     const banner = await js(`document.querySelector('.update-banner')?.textContent ?? ''`)
     check('Bandeau « nouvelle version » affiché au démarrage', updateCalls.check[0] === false && /9\.9\.9 est disponible/.test(banner), banner)
     await shot('00-mise-a-jour.png')
-    await click(...(await center('.update-banner .btn', 'Télécharger')))
-    await sleep(300) // réponse IPC asynchrone
-    check('« Télécharger » ouvre la page de la version', updateCalls.open[0] === RELEASE_URL, updateCalls.open)
+    await sleep(300) // laisse la capture d'écran se terminer
     await click(...(await center('.update-banner .btn', 'Ignorer cette version')))
-    check('« Ignorer cette version » mémorise la version et masque le bandeau', updateCalls.skip[0] === '9.9.9' && (await js(`!document.querySelector('.update-banner')`)))
-    updateResult = { status: 'up-to-date', current: '0.1.0', latest: '0.1.0' }
+    await sleep(500) // réponse IPC asynchrone
+    check('« Ignorer cette version » mémorise la version et masque le bandeau', updateCalls.skip[0] === '9.9.9' && (await js(`!document.querySelector('.update-banner')`)), { skip: updateCalls.skip, banner: await js(`document.querySelector('.update-banner')?.textContent ?? null`), toast: await js(`document.querySelector('.toast')?.textContent ?? null`) })
+
+    // Recherche manuelle : une version plus récente, installée depuis l'application
+    updateResult = { ...updateResult, latest: '9.9.10', name: 'v9.9.10' }
     await click(...(await center('.menubar__title', 'Aide')))
     await click(...(await center('.menu__item', 'Rechercher des mises à jour')))
+    await sleep(250)
+    check('Bouton « Mettre à jour » (application installée)', (await js(`document.querySelector('.update-banner .btn--primary')?.textContent ?? ''`)) === 'Mettre à jour')
+    await click(...(await center('.update-banner .btn', 'Mettre à jour')))
     await sleep(200)
-    const upToDate = await js(`document.querySelector('.toast')?.textContent ?? ''`)
-    check('Recherche manuelle (menu Aide) : « à jour »', updateCalls.check[1] === true && /à jour/.test(upToDate), upToDate)
+    const during = await js(`document.querySelector('.update-banner')?.textContent ?? ''`)
+    check('Téléchargement dans l’application, avec progression', /Téléchargement de Pixelatelier 9\.9\.10/.test(during) && (await js(`!!document.querySelector('.update-banner__progress')`)), during)
+    await sleep(500)
+    await shot('00b-mise-a-jour-prete.png')
+    const ready = await js(`document.querySelector('.update-banner')?.textContent ?? ''`)
+    check('Mise à jour prête : « Redémarrer et installer »', updateCalls.download === 1 && /9\.9\.10.*est prête/.test(ready), ready)
+    await click(...(await center('.update-banner .btn', 'Redémarrer et installer')))
+    await sleep(200)
+    check('Installation demandée au processus principal', updateCalls.install === 1)
+    await click(...(await center('.update-banner .btn', 'À la fermeture')))
+    check('« À la fermeture » masque le bandeau', await js(`!document.querySelector('.update-banner')`))
 
     // 1. Création d'un document 32×32 depuis l'accueil
     const preset = await center('.preset', '32 × 32')

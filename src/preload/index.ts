@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC, type EditAction, type PixelatelierApi } from '../shared/api'
+import { IPC, type EditAction, type PixelatelierApi, type UpdateProgress } from '../shared/api'
 
 /**
  * Pont minimal et typé entre l'interface et le processus principal.
@@ -37,7 +37,17 @@ const api: PixelatelierApi = {
   skipUpdate: (version) => ipcRenderer.invoke(IPC.updateSkip, version),
   openReleasePage: (url) => ipcRenderer.invoke(IPC.updateOpen, url),
   getUpdatePreferences: () => ipcRenderer.invoke(IPC.updateGetPreferences),
-  setAutoUpdateCheck: (enabled) => ipcRenderer.invoke(IPC.updateSetAutoCheck, enabled)
+  setAutoUpdateCheck: (enabled) => ipcRenderer.invoke(IPC.updateSetAutoCheck, enabled),
+  getUpdateMode: () => ipcRenderer.invoke(IPC.updateMode),
+  downloadUpdate: () => ipcRenderer.invoke(IPC.updateDownload),
+  installUpdate: () => ipcRenderer.invoke(IPC.updateInstall),
+  onUpdateProgress: (callback) => {
+    const listener = (_event: unknown, progress: UpdateProgress): void => callback(progress)
+    ipcRenderer.on(IPC.updateProgress, listener)
+    return () => {
+      ipcRenderer.removeListener(IPC.updateProgress, listener)
+    }
+  }
 }
 
 contextBridge.exposeInMainWorld('pixelatelier', api)

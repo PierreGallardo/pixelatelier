@@ -15,11 +15,41 @@ export const RELEASES_PAGE = `https://github.com/${UPDATE_REPOSITORY}/releases`
 const LATEST_RELEASE_API = `https://api.github.com/repos/${UPDATE_REPOSITORY}/releases/latest`
 const REQUEST_TIMEOUT_MS = 10_000
 
+export interface ReleaseAsset {
+  name: string
+  url: string
+  size: number
+}
+
 export interface ReleaseInfo {
   version: string
   name: string
   url: string
   publishedAt: string | null
+  /** Fichiers téléchargeables de la version (installateurs). */
+  assets: ReleaseAsset[]
+}
+
+/** Seuls les fichiers des versions de ce dépôt peuvent être téléchargés par l'application. */
+export const RELEASE_DOWNLOAD_PREFIX = `https://github.com/${UPDATE_REPOSITORY}/releases/download/`
+
+function parseAssets(raw: unknown): ReleaseAsset[] {
+  if (!Array.isArray(raw)) return []
+  const out: ReleaseAsset[] = []
+  for (const a of raw) {
+    if (!a || typeof a !== 'object') continue
+    const { name, browser_download_url: url, size } = a as Record<string, unknown>
+    if (typeof name === 'string' && typeof url === 'string' && url.startsWith(RELEASE_DOWNLOAD_PREFIX) && typeof size === 'number') {
+      out.push({ name, url, size })
+    }
+  }
+  return out
+}
+
+/** Installateur macOS adapté au processeur (`arm64` ou `x64`), ou `null`. */
+export function pickMacInstaller(assets: ReleaseAsset[], arch: string): ReleaseAsset | null {
+  const suffix = `-mac-${arch === 'arm64' ? 'arm64' : 'x64'}.dmg`
+  return assets.find((a) => a.name.endsWith(suffix)) ?? null
 }
 
 export interface ParsedVersion {
@@ -93,7 +123,8 @@ export async function fetchLatestRelease(fetchFn: FetchLike, appVersion: string)
     name: typeof data.name === 'string' && data.name.trim() ? data.name.trim().slice(0, 120) : tag,
     // Seules les pages de ce dépôt peuvent être ouvertes depuis l'application.
     url: isReleaseUrl(htmlUrl) ? htmlUrl : RELEASES_PAGE,
-    publishedAt: typeof data.published_at === 'string' ? data.published_at : null
+    publishedAt: typeof data.published_at === 'string' ? data.published_at : null,
+    assets: parseAssets(data.assets)
   }
 }
 

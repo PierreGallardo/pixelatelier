@@ -32,6 +32,7 @@ import {
 } from '../shared/api'
 import { ensureExtension, readOpenedFile, RecentFiles, SettingsStore, writeFileAtomic } from './fileService'
 import { checkForUpdates, isReleaseUrl, parseVersion } from './updates'
+import { downloadUpdate, getUpdateMode, installUpdate } from './autoUpdate'
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL)
 
@@ -374,6 +375,22 @@ function registerIpc(): void {
   ipcMain.handle(IPC.updateCheck, handleUpdateCheck)
   ipcMain.handle(IPC.updateSkip, handleUpdateSkip)
   ipcMain.handle(IPC.updateOpen, handleUpdateOpen)
+  ipcMain.handle(IPC.updateMode, (event) => {
+    assertTrustedSender(event)
+    return getUpdateMode()
+  })
+  ipcMain.handle(IPC.updateDownload, (event) => {
+    assertTrustedSender(event)
+    return downloadUpdate(() => mainWindow)
+  })
+  ipcMain.handle(IPC.updateInstall, (event) => {
+    assertTrustedSender(event)
+    // L'interface a déjà proposé d'enregistrer : la fermeture ne redemande pas de confirmation.
+    installUpdate(() => {
+      allowClose = true
+      quitting = true
+    })
+  })
   ipcMain.handle(IPC.updateGetPreferences, async (event): Promise<UpdatePreferences> => {
     assertTrustedSender(event)
     return { autoCheck: (await settings.get()).checkUpdatesOnStartup }
