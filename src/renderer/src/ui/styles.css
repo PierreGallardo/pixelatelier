@@ -1404,3 +1404,10 @@ input[type='radio'] {
 .about__update {
   margin-top: 4px;
 }
+
+.options__symmetry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
+}

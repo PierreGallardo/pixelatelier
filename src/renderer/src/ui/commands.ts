@@ -53,6 +53,8 @@ export type CommandId =
   | 'view.fit'
   | 'view.actualSize'
   | 'view.grid'
+  | 'view.symmetryX'
+  | 'view.symmetryY'
   | 'layer.new'
   | 'layer.duplicate'
   | 'layer.delete'
@@ -166,6 +168,21 @@ export function buildCommands(editor: Editor, actions: AppActions, openDialog: (
       run: () => editor.toggleGrid(),
       enabled: hasDoc,
       checked: () => editor.showGrid
+    },
+
+    'view.symmetryX': {
+      label: 'Symétrie gauche / droite',
+      keys: ['alt+shift+x'],
+      run: () => editor.setSymmetry({ mirrorX: !editor.symmetry.mirrorX }),
+      enabled: hasDoc,
+      checked: () => editor.symmetry.mirrorX
+    },
+    'view.symmetryY': {
+      label: 'Symétrie haut / bas',
+      keys: ['alt+shift+y'],
+      run: () => editor.setSymmetry({ mirrorY: !editor.symmetry.mirrorY }),
+      enabled: hasDoc,
+      checked: () => editor.symmetry.mirrorY
     },
 
     'layer.new': { label: 'Nouveau calque', keys: ['shift+n'], run: () => editor.addLayer(), enabled: hasDoc },

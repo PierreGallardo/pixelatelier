@@ -40,7 +40,7 @@ const GROUPS: { title: string; ids: CommandId[] }[] = [
       'tool.brushBigger'
     ]
   },
-  { title: 'Vue et image', ids: ['view.zoomIn', 'view.zoomOut', 'view.fit', 'view.actualSize', 'view.grid', 'image.flipH', 'image.flipV', 'image.canvasSize', 'image.scale'] },
+  { title: 'Vue et image', ids: ['view.zoomIn', 'view.zoomOut', 'view.fit', 'view.actualSize', 'view.grid', 'view.symmetryX', 'view.symmetryY', 'image.flipH', 'image.flipV', 'image.canvasSize', 'image.scale'] },
   { title: 'Calques', ids: ['layer.new', 'layer.duplicate', 'layer.delete', 'layer.up', 'layer.down', 'layer.mergeDown', 'layer.toggleVisible', 'layer.selectAbove', 'layer.selectBelow'] },
   {
     title: 'Animation',

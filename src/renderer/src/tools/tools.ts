@@ -14,8 +14,9 @@ import {
   type Selection,
   type SelectionMode
 } from '../model/selection'
-import { brushRect, stampBrush } from '../raster/brush'
+import { brushRect } from '../raster/brush'
 import { PixelPerfectStroke } from '../raster/pixelPerfect'
+import { mirroredBounds, mirrorPoints, stampBrushSymmetric, type Symmetry } from '../raster/symmetry'
 import { floodFill } from '../raster/fill'
 import { constrainLine, constrainSquare, plotEllipse, plotLine, plotRect } from '../raster/shapes'
 
@@ -88,6 +89,7 @@ class FreehandTool implements ToolBehavior {
   private color: RGBA = TRANSPARENT
   /** Filtre « pixel parfait » (brosse de 1 px uniquement), ou `null`. */
   private perfect: PixelPerfectStroke | null = null
+  private sym: Symmetry | null = null
 
   constructor(
     private readonly editor: Editor,
@@ -100,18 +102,23 @@ class FreehandTool implements ToolBehavior {
     const size = this.editor.brushSize
     const perfect = this.perfect
     const original = s.originalPixels
+    const sym = this.sym
     plotLine(a.x, a.y, b.x, b.y, (x, y) => {
       if (perfect) {
-        // Coin d'un « L » : le pixel retrouve sa couleur d'avant le trait.
+        // Coin d'un « L » : le pixel (et ses symétriques) retrouve sa couleur d'avant le trait.
         const corner = perfect.add({ x, y })
-        if (corner && inBounds(original, corner.x, corner.y)) setPixel(s.cel, corner.x, corner.y, getPixel(original, corner.x, corner.y))
+        if (corner) {
+          for (const c of sym ? mirrorPoints(corner.x, corner.y, sym) : [corner]) {
+            if (inBounds(original, c.x, c.y)) setPixel(s.cel, c.x, c.y, getPixel(original, c.x, c.y))
+          }
+        }
       }
-      stampBrush(s.cel, x, y, size, this.color)
+      stampBrushSymmetric(s.cel, x, y, size, this.color, sym)
     })
     // Le coin retiré est voisin du segment : on élargit d'un pixel la zone à redessiner.
     const grow = perfect ? 1 : 0
     const r = unionRect(brushRect(a.x, a.y, size), brushRect(b.x, b.y, size))
-    s.touch(r && { x: r.x - grow, y: r.y - grow, w: r.w + grow * 2, h: r.h + grow * 2 })
+    if (r) s.touch(mirroredBounds({ x: r.x - grow, y: r.y - grow, w: r.w + grow * 2, h: r.h + grow * 2 }, sym))
   }
 
   down(p: ToolPointer): void {
@@ -119,6 +126,7 @@ class FreehandTool implements ToolBehavior {
     if (!this.session) return
     this.color = this.erase ? TRANSPARENT : strokeColor(this.editor, p)
     this.perfect = this.editor.pixelPerfect && this.editor.brushSize === 1 ? new PixelPerfectStroke() : null
+    this.sym = this.editor.activeSymmetry
     const from = p.shift && this.editor.lastFreehandPoint ? this.editor.lastFreehandPoint : p
     this.segment(from, p)
     this.last = { x: p.x, y: p.y }
@@ -169,14 +177,15 @@ class ShapeTool implements ToolBehavior {
           ? constrainSquare(start.x, start.y, p.x, p.y)
           : { x: p.x, y: p.y }
     const size = this.filled ? 1 : this.editor.brushSize
-    const plot = (x: number, y: number): void => stampBrush(s.cel, x, y, size, this.color)
+    const sym = this.editor.activeSymmetry
+    const plot = (x: number, y: number): void => stampBrushSymmetric(s.cel, x, y, size, this.color, sym)
     if (this.kind === 'line') plotLine(start.x, start.y, end.x, end.y, plot)
     else if (this.kind === 'rect') plotRect(start.x, start.y, end.x, end.y, this.filled, plot)
     else plotEllipse(start.x, start.y, end.x, end.y, this.filled, plot)
 
     const r = rectFromPoints(start.x, start.y, end.x, end.y)
     const off = Math.floor((size - 1) / 2)
-    const rect = { x: r.x - off, y: r.y - off, w: r.w + size - 1, h: r.h + size - 1 }
+    const rect = mirroredBounds({ x: r.x - off, y: r.y - off, w: r.w + size - 1, h: r.h + size - 1 }, sym)
     s.touch(unionRect(this.lastRect, rect))
     this.lastRect = rect
   }
@@ -215,7 +224,12 @@ class FillTool implements ToolBehavior {
     if (!doc || p.x < 0 || p.y < 0 || p.x >= doc.width || p.y >= doc.height) return
     const session = this.editor.beginEdit()
     if (!session) return
-    const rect = floodFill(session.cel, p.x, p.y, strokeColor(this.editor, p), { contiguous: this.editor.fillContiguous })
+    const color = strokeColor(this.editor, p)
+    const sym = this.editor.activeSymmetry
+    let rect: Rect | null = null
+    for (const q of sym ? mirrorPoints(p.x, p.y, sym) : [p]) {
+      rect = unionRect(rect, floodFill(session.cel, q.x, q.y, color, { contiguous: this.editor.fillContiguous }))
+    }
     session.touch(rect)
     session.commit('Remplissage')
   }

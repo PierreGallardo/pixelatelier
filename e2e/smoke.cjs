@@ -435,6 +435,15 @@ app.whenReady().then(async () => {
     await drag([at(26, 26), at(27, 26), at(27, 27), at(28, 27), at(28, 28), at(29, 28)])
     check('Pixel parfait : coins retirés, diagonale conservée', (await shown(27, 26))[0] < 100 && (await shown(28, 27))[0] < 100 && (await shown(27, 27))[0] > 150 && (await shown(28, 28))[0] > 150)
 
+    // 19. Symétrie gauche/droite (Alt+Maj+X) : un clic dessine aussi le pixel symétrique
+    await key('X', ['alt', 'shift'])
+    check('Symétrie activée : bouton actif dans la barre d’options', await js(`!!document.querySelector('.options__symmetry .icon-btn.is-active')`))
+    await click(...at(25, 30))
+    check('Symétrie : pixel symétrique dessiné (axe au centre)', (await shown(25, 30))[0] > 150 && (await shown(6, 30))[0] > 150)
+    await sleep(150)
+    await shot('12-symetrie.png')
+    await key('X', ['alt', 'shift'])
+
     check('Aucune erreur dans la console', consoleErrors.length === 0, consoleErrors)
   } catch (err) {
     check('Exception du banc de test', false, String(err && err.stack ? err.stack : err))
