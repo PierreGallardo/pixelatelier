@@ -194,8 +194,34 @@ export class CanvasRenderer {
     ctx.lineWidth = 1
     ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1)
 
+    this.drawSymmetryAxes(doc, x, y, w, h)
     this.drawSelection()
     this.drawCursor(doc)
+  }
+
+  /** Axes de symétrie : lignes en pointillés sur toute la hauteur / largeur de l'image. */
+  private drawSymmetryAxes(doc: PixelDocument, x: number, y: number, w: number, h: number): void {
+    const sym = this.editor.activeSymmetry
+    if (!sym) return
+    const { ctx, dpr } = this
+    const zoom = this.viewport.zoom
+    ctx.save()
+    ctx.lineWidth = Math.max(1, Math.round(dpr))
+    ctx.setLineDash([6 * dpr, 4 * dpr])
+    ctx.strokeStyle = 'rgba(89, 211, 194, 0.9)'
+    ctx.beginPath()
+    if (sym.mirrorX && doc.width > 0) {
+      const ax = Math.round(x + sym.axisX * zoom * dpr) + 0.5
+      ctx.moveTo(ax, y)
+      ctx.lineTo(ax, y + h)
+    }
+    if (sym.mirrorY && doc.height > 0) {
+      const ay = Math.round(y + sym.axisY * zoom * dpr) + 0.5
+      ctx.moveTo(x, ay)
+      ctx.lineTo(x + w, ay)
+    }
+    ctx.stroke()
+    ctx.restore()
   }
 
   /** Vrai si un contour animé est affiché (sélection ou collage en cours). */
