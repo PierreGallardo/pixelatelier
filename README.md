@@ -21,7 +21,7 @@ Les installateurs de la dernière version sont sur la page **[Releases](https://
 | Mac avec puce Apple (M1, M2, M3…) | `Pixelatelier-X.Y.Z-mac-arm64.dmg` |
 | Mac avec processeur Intel | `Pixelatelier-X.Y.Z-mac-x64.dmg` |
 
-`X.Y.Z` est le numéro de la version, par exemple `0.1.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
+`X.Y.Z` est le numéro de la version, par exemple `0.2.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
 
 > **Quel Mac avez-vous ?** Menu Pomme > **À propos de ce Mac**. Une ligne « Puce » (Apple M…) correspond au fichier `arm64`, une ligne « Processeur » (Intel) au fichier `x64`.
 
@@ -47,6 +47,20 @@ Pour désinstaller : glissez Pixelatelier depuis **Applications** vers la Corbei
 
 ### Mettre à jour
 Quand une nouvelle version est publiée, Pixelatelier l'annonce par un bandeau au démarrage. Vous pouvez aussi vérifier à tout moment avec **Aide** > **Rechercher des mises à jour…**. Le bouton **Télécharger** ouvre la page de la nouvelle version : installez-la comme ci-dessus, elle remplace l'ancienne. Vos projets `.pixatelier` ne sont pas modifiés.
+
+---
+
+## Nouveautés
+
+### 0.2.0
+- **Mode pixel parfait** pour le crayon et la gomme (touche `P`) : les angles en « L » des traits à main levée sont retirés pour des lignes d'un pixel d'épaisseur.
+- **Symétrie** gauche/droite et haut/bas (`Alt+Maj+X` / `Alt+Maj+Y`), avec axes réglables et affichés sur le dessin.
+
+### 0.1.0
+- Première version publiée : outils de dessin, sélection et presse-papiers, baguette magique, calques, animation avec pelures d'oignon, annuler/rétablir, format `.pixatelier`, exports PNG, GIF et planche de sprites.
+- Annonce des nouvelles versions au démarrage et dans le menu Aide.
+
+Le détail de chaque version (fichiers et liste des modifications) est sur la page [Releases](https://github.com/PierreGallardo/pixelatelier/releases).
 
 ---
 
@@ -163,6 +177,7 @@ Quand une nouvelle version est publiée, Pixelatelier l'annonce par un bandeau a
 | Sélection rectangulaire | `M` | Baguette magique | `W` |
 | Couper / Copier / Coller | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | Tout sélectionner / désélectionner | `Ctrl+A` / `Ctrl+D` |
 | Copier tous les calques | `Ctrl+Maj+C` | Inverser la sélection | `Ctrl+Maj+I` |
+| Pixel parfait | `P` | Symétrie gauche/droite / haut/bas | `Alt+Maj+X` / `Alt+Maj+Y` |
 
 ---
 
@@ -220,12 +235,13 @@ Les installateurs ne sont pas signés. L'application Mac est signée « ad hoc �
 src/
 ├── main/                  Processus principal Electron
 │   ├── index.ts           Fenêtre, sécurité, boîtes de dialogue, gestionnaires IPC, confirmation à la fermeture
-│   └── fileService.ts     Lecture, écriture atomique, fichiers récents (Node pur, testé)
+│   ├── fileService.ts     Lecture, écriture atomique, fichiers récents, préférences (Node pur, testé)
+│   └── updates.ts         Recherche de nouvelle version sur GitHub (comparaison SemVer, testé)
 ├── preload/index.ts       Pont contextBridge minimal et typé (window.pixelatelier)
 ├── shared/api.ts          Contrat IPC partagé (canaux et types)
 └── renderer/src/
-    ├── model/             Modèle du document : bitmaps RGBA, couleurs, palette, composition, géométrie de la vue
-    ├── raster/            Algorithmes de tracé : ligne, rectangle, ellipse, brosse, remplissage
+    ├── model/             Modèle du document : bitmaps RGBA, couleurs, palette, composition, sélection, géométrie de la vue
+    ├── raster/            Algorithmes de tracé : ligne, rectangle, ellipse, brosse, remplissage, baguette magique, pixel parfait, symétrie
     ├── history/           Historique : patchs de pixels et instantanés de structure
     ├── editor/            État central (Editor) et sessions de modification (EditSession)
     ├── tools/             Comportement de chaque outil (appui, glisser, relâchement)
@@ -236,6 +252,7 @@ src/
     └── ui/                Interface React : commandes et raccourcis, canevas, panneaux, boîtes de dialogue
 tests/                     Tests unitaires Vitest (sans DOM)
 e2e/smoke.cjs              Test de bout en bout dans Electron (fenêtre hors écran)
+.github/workflows/         Construction et publication automatique des installateurs
 build/icon.png             Icône de l'application (originale)
 ```
 
@@ -337,12 +354,12 @@ JSON UTF-8 :
 - Sélection rectangulaire et baguette magique uniquement : pas de lasso ni de sélection elliptique, pas de rotation ni de mise à l'échelle d'une sélection. La sélection elle-même ne s'annule pas avec `Ctrl+Z` (les modifications de pixels, oui).
 - Pas de calques de groupe, de modes de fusion ni de calques de référence.
 - Le menu Édition de macOS transmet Couper/Copier/Coller/Tout sélectionner à l'interface. Ce comportement n'a pas pu être testé ici (développement sous Windows).
-- La durée est la même pour toutes les images (réglage en images/s), sans durée propre à chaque image.
+- Pas de tags d'animation (plages d'images nommées). La durée est la même pour toutes les images (réglage en images/s), sans durée propre à chaque image.
 - Le GIF ne connaît que la transparence tout ou rien : un pixel à moins de 50 % d'opacité devient transparent. Les navigateurs ramènent aussi les délais inférieurs à 20 ms, donc les animations au-delà de 50 images/s sont ralenties dans un GIF.
 - Lors de l'import d'images, le décodeur du navigateur peut légèrement arrondir la couleur des pixels très transparents.
 - Pas d'association de fichiers ni d'ouverture d'un fichier passé en argument ou déposé sur la fenêtre. On ouvre un fichier par « Ouvrir… » ou par les fichiers récents.
 - Les confirmations à la fermeture utilisent les boîtes de dialogue natives. Elles ont été relues dans le code, mais le test de bout en bout ne peut pas les automatiser.
 - Installateurs non signés : avertissement SmartScreen sous Windows, et validation manuelle au premier lancement sur macOS.
-- L'installateur Windows a été construit, installé et lancé sur ce PC. La version macOS et le workflow GitHub n'ont pas pu être exécutés depuis cet environnement Windows. Le code n'utilise rien de propre à Windows.
+- Les installateurs Windows et macOS sont construits et publiés par GitHub Actions. L'application est testée sous Windows ; la version macOS n'a pas encore été vérifiée sur un vrai Mac.
 - Les mises à jour sont annoncées mais pas installées automatiquement : il faut télécharger puis lancer le nouvel installateur, qui remplace l'ancienne version.
 - `npm audit` signale des vulnérabilités modérées dans des dépendances d'**electron-builder** (outil de création des installateurs, absent de l'application distribuée).
