@@ -35,6 +35,7 @@ const GROUPS: { title: string; ids: CommandId[] }[] = [
       'tool.rectFilled',
       'tool.ellipse',
       'tool.ellipseFilled',
+      'tool.pixelPerfect',
       'tool.brushSmaller',
       'tool.brushBigger'
     ]

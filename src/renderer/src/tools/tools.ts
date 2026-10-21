@@ -1,4 +1,4 @@
-import { getPixel, inBounds, rectFromPoints, unionRect, type Point, type Rect } from '../model/bitmap'
+import { getPixel, inBounds, rectFromPoints, setPixel, unionRect, type Point, type Rect } from '../model/bitmap'
 import { TRANSPARENT, type RGBA } from '../model/color'
 import { composePixel } from '../model/compose'
 import type { Editor, ToolId } from '../editor/Editor'
@@ -15,6 +15,7 @@ import {
   type SelectionMode
 } from '../model/selection'
 import { brushRect, stampBrush } from '../raster/brush'
+import { PixelPerfectStroke } from '../raster/pixelPerfect'
 import { floodFill } from '../raster/fill'
 import { constrainLine, constrainSquare, plotEllipse, plotLine, plotRect } from '../raster/shapes'
 
@@ -42,7 +43,7 @@ export const TOOLS: readonly ToolInfo[] = [
     hint: 'Sélectionne ou supprime une couleur, en zone contiguë ou dans toute l’image (limitée à la sélection active). Maj : ajouter, Alt : retirer.',
     usesBrush: false
   },
-  { id: 'pencil', label: 'Crayon', shortcut: 'B', hint: 'Clic gauche : couleur principale, clic droit : secondaire. Maj+clic : ligne depuis le dernier point.', usesBrush: true },
+  { id: 'pencil', label: 'Crayon', shortcut: 'B', hint: 'Clic gauche : couleur principale, clic droit : secondaire. Maj+clic : ligne depuis le dernier point. Option « pixel parfait » : traits sans angles en L.', usesBrush: true },
   { id: 'eraser', label: 'Gomme', shortcut: 'E', hint: 'Rend les pixels transparents.', usesBrush: true },
   { id: 'picker', label: 'Pipette', shortcut: 'I', hint: 'Clic gauche : couleur principale, clic droit : secondaire. Alt+clic avec un autre outil.', usesBrush: false },
   { id: 'fill', label: 'Pot de peinture', shortcut: 'G', hint: 'Remplit la zone de même couleur (calque actif).', usesBrush: false },
@@ -85,6 +86,8 @@ class FreehandTool implements ToolBehavior {
   private session: EditSession | null = null
   private last: Point | null = null
   private color: RGBA = TRANSPARENT
+  /** Filtre « pixel parfait » (brosse de 1 px uniquement), ou `null`. */
+  private perfect: PixelPerfectStroke | null = null
 
   constructor(
     private readonly editor: Editor,
@@ -95,14 +98,27 @@ class FreehandTool implements ToolBehavior {
     const s = this.session
     if (!s || s.isClosed) return
     const size = this.editor.brushSize
-    plotLine(a.x, a.y, b.x, b.y, (x, y) => stampBrush(s.cel, x, y, size, this.color))
-    s.touch(unionRect(brushRect(a.x, a.y, size), brushRect(b.x, b.y, size)))
+    const perfect = this.perfect
+    const original = s.originalPixels
+    plotLine(a.x, a.y, b.x, b.y, (x, y) => {
+      if (perfect) {
+        // Coin d'un « L » : le pixel retrouve sa couleur d'avant le trait.
+        const corner = perfect.add({ x, y })
+        if (corner && inBounds(original, corner.x, corner.y)) setPixel(s.cel, corner.x, corner.y, getPixel(original, corner.x, corner.y))
+      }
+      stampBrush(s.cel, x, y, size, this.color)
+    })
+    // Le coin retiré est voisin du segment : on élargit d'un pixel la zone à redessiner.
+    const grow = perfect ? 1 : 0
+    const r = unionRect(brushRect(a.x, a.y, size), brushRect(b.x, b.y, size))
+    s.touch(r && { x: r.x - grow, y: r.y - grow, w: r.w + grow * 2, h: r.h + grow * 2 })
   }
 
   down(p: ToolPointer): void {
     this.session = this.editor.beginEdit()
     if (!this.session) return
     this.color = this.erase ? TRANSPARENT : strokeColor(this.editor, p)
+    this.perfect = this.editor.pixelPerfect && this.editor.brushSize === 1 ? new PixelPerfectStroke() : null
     const from = p.shift && this.editor.lastFreehandPoint ? this.editor.lastFreehandPoint : p
     this.segment(from, p)
     this.last = { x: p.x, y: p.y }

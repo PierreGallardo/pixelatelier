@@ -73,6 +73,7 @@ export type CommandId =
   | 'anim.lastFrame'
   | 'anim.play'
   | 'anim.onion'
+  | 'tool.pixelPerfect'
   | 'tool.brushSmaller'
   | 'tool.brushBigger'
   | `tool.${ToolId}`
@@ -254,6 +255,12 @@ export function buildCommands(editor: Editor, actions: AppActions, openDialog: (
       checked: () => editor.onion.enabled
     },
 
+    'tool.pixelPerfect': {
+      label: 'Mode pixel parfait (crayon et gomme)',
+      keys: ['p'],
+      run: () => editor.setPixelPerfect(!editor.pixelPerfect),
+      checked: () => editor.pixelPerfect
+    },
     'tool.brushSmaller': { label: 'Réduire la brosse', keys: ['['], run: () => editor.setBrushSize(editor.brushSize - 1) },
     'tool.brushBigger': { label: 'Agrandir la brosse', keys: [']'], run: () => editor.setBrushSize(editor.brushSize + 1) },
     'tool.select': tool('select', 'Sélection rectangulaire', ['m']),

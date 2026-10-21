@@ -47,6 +47,17 @@ export function ToolOptionsBar(): React.JSX.Element {
         </label>
       )}
 
+      {(editor.tool === 'pencil' || editor.tool === 'eraser') && (
+        <label
+          className="field field--inline"
+          title={`Pixel parfait (${formatKeys('p')}) : retire les angles en « L » des traits à main levée, pour des lignes d'un pixel d'épaisseur. Actif avec une brosse de 1 px.`}
+        >
+          <input type="checkbox" checked={editor.pixelPerfect} onChange={(e) => editor.setPixelPerfect(e.target.checked)} />
+          <span className={editor.brushSize > 1 ? 'muted' : undefined}>Pixel parfait</span>
+          {editor.brushSize > 1 && <span className="muted small">(brosse de 1 px)</span>}
+        </label>
+      )}
+
       {editor.tool === 'fill' && (
         <label className="field field--inline" title="Contigu : remplit seulement la zone connectée. Sinon : toutes les occurrences de la couleur.">
           <input type="checkbox" checked={editor.fillContiguous} onChange={(e) => editor.setFillContiguous(e.target.checked)} />
