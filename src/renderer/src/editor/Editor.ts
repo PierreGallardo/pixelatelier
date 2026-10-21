@@ -121,6 +121,8 @@ export class Editor implements EditSessionHost {
 
   tool: ToolId = 'pencil'
   brushSize = 1
+  /** Crayon et gomme : retire les angles en « L » des traits de 1 px. */
+  pixelPerfect = false
   fillContiguous = true
   /** Pipette : vrai = couleur affichée (tous les calques), faux = calque actif. */
   pickerSampleAll = true
@@ -975,6 +977,12 @@ export class Editor implements EditSessionHost {
     const s = Math.min(MAX_BRUSH_SIZE, Math.max(MIN_BRUSH_SIZE, Math.round(size)))
     if (s === this.brushSize) return
     this.brushSize = s
+    this.emit()
+  }
+
+  setPixelPerfect(v: boolean): void {
+    if (this.pixelPerfect === v) return
+    this.pixelPerfect = v
     this.emit()
   }
 
