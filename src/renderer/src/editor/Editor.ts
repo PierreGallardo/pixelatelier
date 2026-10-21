@@ -41,6 +41,7 @@ import { History, type ActiveTarget, type HistoryEntry } from '../history/histor
 import { captureStructure } from '../history/snapshot'
 import { MAX_BRUSH_SIZE, MIN_BRUSH_SIZE } from '../raster/brush'
 import { magicWandMask } from '../raster/wand'
+import { isSymmetryActive, snapAxis, type Symmetry } from '../raster/symmetry'
 import { EditSession, type EditSessionHost } from './EditSession'
 
 export type ToolId =
@@ -121,6 +122,15 @@ export class Editor implements EditSessionHost {
 
   tool: ToolId = 'pencil'
   brushSize = 1
+  /** Symétrie de dessin ; axes `null` = centre de l'image. */
+  symmetry: { mirrorX: boolean; mirrorY: boolean; axisX: number | null; axisY: number | null } = {
+    mirrorX: false,
+    mirrorY: false,
+    axisX: null,
+    axisY: null
+  }
+  /** Crayon et gomme : retire les angles en « L » des traits de 1 px. */
+  pixelPerfect = false
   fillContiguous = true
   /** Pipette : vrai = couleur affichée (tous les calques), faux = calque actif. */
   pickerSampleAll = true
@@ -975,6 +985,42 @@ export class Editor implements EditSessionHost {
     const s = Math.min(MAX_BRUSH_SIZE, Math.max(MIN_BRUSH_SIZE, Math.round(size)))
     if (s === this.brushSize) return
     this.brushSize = s
+    this.emit()
+  }
+
+  /** Symétrie à appliquer au document courant (axes résolus), ou `null` si inactive. */
+  get activeSymmetry(): Symmetry | null {
+    const doc = this.doc
+    const s = this.symmetry
+    if (!doc) return null
+    const sym: Symmetry = {
+      mirrorX: s.mirrorX,
+      mirrorY: s.mirrorY,
+      axisX: snapAxis(s.axisX ?? doc.width / 2, doc.width),
+      axisY: snapAxis(s.axisY ?? doc.height / 2, doc.height)
+    }
+    return isSymmetryActive(sym) ? sym : null
+  }
+
+  /** Axes effectifs (centre de l'image par défaut), même si la symétrie est inactive. */
+  get symmetryAxes(): { x: number; y: number } {
+    const doc = this.doc
+    if (!doc) return { x: 0, y: 0 }
+    return {
+      x: snapAxis(this.symmetry.axisX ?? doc.width / 2, doc.width),
+      y: snapAxis(this.symmetry.axisY ?? doc.height / 2, doc.height)
+    }
+  }
+
+  setSymmetry(patch: Partial<Editor['symmetry']>): void {
+    this.symmetry = { ...this.symmetry, ...patch }
+    this.requestRender(null)
+    this.emit()
+  }
+
+  setPixelPerfect(v: boolean): void {
+    if (this.pixelPerfect === v) return
+    this.pixelPerfect = v
     this.emit()
   }
 

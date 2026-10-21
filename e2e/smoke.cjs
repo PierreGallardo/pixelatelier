@@ -160,6 +160,7 @@ app.whenReady().then(async () => {
     check('Bandeau « nouvelle version » affiché au démarrage', updateCalls.check[0] === false && /9\.9\.9 est disponible/.test(banner), banner)
     await shot('00-mise-a-jour.png')
     await click(...(await center('.update-banner .btn', 'Télécharger')))
+    await sleep(300) // réponse IPC asynchrone
     check('« Télécharger » ouvre la page de la version', updateCalls.open[0] === RELEASE_URL, updateCalls.open)
     await click(...(await center('.update-banner .btn', 'Ignorer cette version')))
     check('« Ignorer cette version » mémorise la version et masque le bandeau', updateCalls.skip[0] === '9.9.9' && (await js(`!document.querySelector('.update-banner')`)))
@@ -423,6 +424,25 @@ app.whenReady().then(async () => {
     check('Coller une image externe : collage 3 × 3', /Collage 3 × 3/.test(await statusText()))
     await key('Escape')
     check('Échap annule le collage', !/Collage/.test(await statusText()) && (await shown(1, 1))[1] < 150)
+
+    // 18. Mode pixel parfait (touche P) : trait en escalier sans angles en L
+    await key('B')
+    await key('P')
+    check(
+      'Option « Pixel parfait » cochée par la touche P',
+      await js(`[...document.querySelectorAll('.options label')].some((l) => l.textContent.includes('Pixel parfait') && l.querySelector('input').checked)`)
+    )
+    await drag([at(26, 26), at(27, 26), at(27, 27), at(28, 27), at(28, 28), at(29, 28)])
+    check('Pixel parfait : coins retirés, diagonale conservée', (await shown(27, 26))[0] < 100 && (await shown(28, 27))[0] < 100 && (await shown(27, 27))[0] > 150 && (await shown(28, 28))[0] > 150)
+
+    // 19. Symétrie gauche/droite (Alt+Maj+X) : un clic dessine aussi le pixel symétrique
+    await key('X', ['alt', 'shift'])
+    check('Symétrie activée : bouton actif dans la barre d’options', await js(`!!document.querySelector('.options__symmetry .icon-btn.is-active')`))
+    await click(...at(25, 30))
+    check('Symétrie : pixel symétrique dessiné (axe au centre)', (await shown(25, 30))[0] > 150 && (await shown(6, 30))[0] > 150)
+    await sleep(150)
+    await shot('12-symetrie.png')
+    await key('X', ['alt', 'shift'])
 
     check('Aucune erreur dans la console', consoleErrors.length === 0, consoleErrors)
   } catch (err) {

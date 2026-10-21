@@ -53,6 +53,8 @@ export type CommandId =
   | 'view.fit'
   | 'view.actualSize'
   | 'view.grid'
+  | 'view.symmetryX'
+  | 'view.symmetryY'
   | 'layer.new'
   | 'layer.duplicate'
   | 'layer.delete'
@@ -73,6 +75,7 @@ export type CommandId =
   | 'anim.lastFrame'
   | 'anim.play'
   | 'anim.onion'
+  | 'tool.pixelPerfect'
   | 'tool.brushSmaller'
   | 'tool.brushBigger'
   | `tool.${ToolId}`
@@ -167,6 +170,21 @@ export function buildCommands(editor: Editor, actions: AppActions, openDialog: (
       checked: () => editor.showGrid
     },
 
+    'view.symmetryX': {
+      label: 'Symétrie gauche / droite',
+      keys: ['alt+shift+x'],
+      run: () => editor.setSymmetry({ mirrorX: !editor.symmetry.mirrorX }),
+      enabled: hasDoc,
+      checked: () => editor.symmetry.mirrorX
+    },
+    'view.symmetryY': {
+      label: 'Symétrie haut / bas',
+      keys: ['alt+shift+y'],
+      run: () => editor.setSymmetry({ mirrorY: !editor.symmetry.mirrorY }),
+      enabled: hasDoc,
+      checked: () => editor.symmetry.mirrorY
+    },
+
     'layer.new': { label: 'Nouveau calque', keys: ['shift+n'], run: () => editor.addLayer(), enabled: hasDoc },
     'layer.duplicate': { label: 'Dupliquer le calque', keys: ['mod+shift+d'], run: () => editor.duplicateLayer(), enabled: hasDoc },
     'layer.delete': {
@@ -254,6 +272,12 @@ export function buildCommands(editor: Editor, actions: AppActions, openDialog: (
       checked: () => editor.onion.enabled
     },
 
+    'tool.pixelPerfect': {
+      label: 'Mode pixel parfait (crayon et gomme)',
+      keys: ['p'],
+      run: () => editor.setPixelPerfect(!editor.pixelPerfect),
+      checked: () => editor.pixelPerfect
+    },
     'tool.brushSmaller': { label: 'Réduire la brosse', keys: ['['], run: () => editor.setBrushSize(editor.brushSize - 1) },
     'tool.brushBigger': { label: 'Agrandir la brosse', keys: [']'], run: () => editor.setBrushSize(editor.brushSize + 1) },
     'tool.select': tool('select', 'Sélection rectangulaire', ['m']),

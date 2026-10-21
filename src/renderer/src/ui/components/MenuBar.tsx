@@ -64,7 +64,10 @@ const MENUS: MenuDef[] = [
       'view.zoomOut',
       'view.fit',
       'view.actualSize',
-      'view.grid'
+      'view.grid',
+      '-',
+      'view.symmetryX',
+      'view.symmetryY'
     ]
   },
   {

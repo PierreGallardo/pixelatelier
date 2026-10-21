@@ -64,6 +64,8 @@ Quand une nouvelle version est publiée, Pixelatelier l'annonce par un bandeau a
 - Outils : crayon, gomme, pipette, pot de peinture, ligne, rectangle vide ou plein, ellipse vide ou pleine.
 - Clic gauche pour la couleur principale, clic droit pour la couleur secondaire.
 - Brosse carrée de 1 à 32 px pour le crayon, la gomme, la ligne et les contours.
+- **Pixel parfait** (option du crayon et de la gomme, touche `P`) : retire automatiquement les angles en « L » des traits à main levée, pour des lignes d'un pixel d'épaisseur. Actif avec une brosse de 1 px, désactivé par défaut.
+- **Symétrie** gauche/droite et/ou haut/bas (barre d'options, menu Image, `Alt+Maj+X` / `Alt+Maj+Y`) : crayon, gomme, formes et pot de peinture dessinent aussi les pixels symétriques. Les axes, affichés en pointillés, sont au centre de l'image par défaut ; leur position se règle au demi-pixel près. Fonctionne avec le mode pixel parfait et la sélection.
 - Maj pendant une forme : carré, cercle ou ligne à 45°. Maj+clic au crayon : ligne depuis le dernier point. Alt+clic : pipette temporaire.
 - Pot de peinture en zone contiguë (4-voisinage) ou sur toutes les occurrences de la couleur.
 - Pipette sur l'image visible ou sur le calque actif.
@@ -308,7 +310,7 @@ JSON UTF-8 :
 
 ## Tests
 
-- **Unitaires** (`npm test`, 104 tests) :
+- **Unitaires** (`npm test`, 128 tests) :
   - conversion des coordonnées écran ↔ document et zoom ;
   - ligne de Bresenham dans tous les octants, rectangles, ellipses, brosse ;
   - pot de peinture : bords, diagonales, formes concaves, transparence, mode non contigu, 2048×2048 ;
@@ -322,8 +324,10 @@ JSON UTF-8 :
   - baguette magique : zone contiguë, toute l'image, tolérance, transparence ;
   - outil de sélection, dessin confiné, copier, couper, coller (flottant, déplacé, validé, annulé, ramené dans le document), copie fusionnée, suppression, déplacement du contenu ;
   - suppression d'une couleur en zone, dans toute l'image ou limitée à la sélection, en une seule annulation ;
+  - mode pixel parfait : détection des angles en L, escaliers, mouvements rapides, couleur d'origine restaurée, brosse > 1 px, gomme ;
+  - symétrie : points et rectangles reflétés (axe entre deux pixels ou au milieu d'un pixel, un ou deux axes), brosse paire, crayon, formes, gomme, pot de peinture, pixel parfait, sélection, changement de taille ;
   - mises à jour : lecture et comparaison des numéros de version (pré-versions comprises), réponse de GitHub (version publiée, aucune version, erreur, adresse étrangère refusée), version ignorée, absence de connexion, préférences.
-- **Bout en bout** (`npm run test:e2e`, 63 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Télécharger, Ignorer, recherche manuelle), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
+- **Bout en bout** (`npm run test:e2e`, 67 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Télécharger, Ignorer, recherche manuelle), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
 - Pendant le développement, les PNG et GIF produits ont aussi été relus avec Pillow (Python), sans aucun pixel différent, y compris pour un GIF de 257×199 aux couleurs aléatoires qui sature le dictionnaire LZW.
 
 ---
