@@ -4,6 +4,8 @@
 # de package.json. Si la Release `v<version>` n'existe pas encore, il construit
 # l'installateur Windows (.exe) et les DMG macOS (Apple Silicon et Intel), crée
 # l'étiquette `v<version>` et publie la Release avec ses notes (titres des Pull Requests).
+# Le fichier latest.yml (et les .blockmap) permet aux applications Windows installées de
+# télécharger et installer elles-mêmes la nouvelle version (electron-updater).
 # Si cette version est déjà publiée, rien n'est construit : augmentez `version` dans
 # package.json pour publier une nouvelle version.
 #
@@ -76,6 +78,8 @@ jobs:
           path: |
             release/*.exe
             release/*.dmg
+            release/*.blockmap
+            release/latest*.yml
           if-no-files-found: error
 
   release:

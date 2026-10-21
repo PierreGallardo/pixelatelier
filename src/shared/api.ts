@@ -23,8 +23,29 @@ export const IPC = {
   updateSkip: 'update:skip',
   updateOpen: 'update:open-release',
   updateGetPreferences: 'update:get-preferences',
-  updateSetAutoCheck: 'update:set-auto-check'
+  updateSetAutoCheck: 'update:set-auto-check',
+  updateMode: 'update:mode',
+  updateDownload: 'update:download',
+  updateInstall: 'update:install',
+  updateProgress: 'update:progress'
 } as const
+
+/**
+ * Comment l'application peut se mettre à jour :
+ * - `install` : téléchargement puis installation automatique (Windows) ;
+ * - `download` : téléchargement de l'installateur, puis ouverture (macOS, application non signée) ;
+ * - `page` : ouverture de la page de téléchargement (développement, Linux…).
+ */
+export type UpdateMode = 'install' | 'download' | 'page'
+
+/** Résultat d'un téléchargement de mise à jour. */
+export type UpdateDownloadResult = { status: 'ready'; version: string } | { status: 'opened'; path: string }
+
+export interface UpdateProgress {
+  percent: number
+  transferred: number
+  total: number
+}
 
 /** Résultat d'une recherche de nouvelle version. */
 export type UpdateCheckResult =
@@ -131,4 +152,10 @@ export interface PixelatelierApi {
   openReleasePage(url: string): Promise<void>
   getUpdatePreferences(): Promise<UpdatePreferences>
   setAutoUpdateCheck(enabled: boolean): Promise<void>
+  getUpdateMode(): Promise<UpdateMode>
+  /** Télécharge la dernière version (mode `install` ou `download`). */
+  downloadUpdate(): Promise<UpdateDownloadResult>
+  /** Quitte et installe la mise à jour téléchargée (mode `install`). */
+  installUpdate(): Promise<void>
+  onUpdateProgress(callback: (progress: UpdateProgress) => void): () => void
 }

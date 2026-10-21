@@ -10,6 +10,8 @@ import {
   type SavedFile,
   type UpdateCheckResult,
   type UpdatePreferences,
+  type UpdateDownloadResult,
+  type UpdateMode,
   type WindowState
 } from '../../../shared/api'
 
@@ -128,7 +130,17 @@ const webApi: PixelatelierApi = {
   async getUpdatePreferences(): Promise<UpdatePreferences> {
     return { autoCheck: false }
   },
-  async setAutoUpdateCheck(): Promise<void> {}
+  async setAutoUpdateCheck(): Promise<void> {},
+  async getUpdateMode(): Promise<UpdateMode> {
+    return 'page'
+  },
+  async downloadUpdate(): Promise<UpdateDownloadResult> {
+    throw new Error('Mise à jour automatique indisponible dans le navigateur.')
+  },
+  async installUpdate(): Promise<void> {},
+  onUpdateProgress(): () => void {
+    return () => undefined
+  }
 }
 
 let lastWebClipboardSize = -1
