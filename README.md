@@ -28,13 +28,13 @@ Les installateurs de la dernière version sont sur la page **[Releases](https://
 ### Windows
 1. Téléchargez `Pixelatelier-Setup-X.Y.Z.exe`, puis lancez-le.
 2. L'installateur n'est pas signé (une signature nécessite un certificat payant). Windows SmartScreen peut donc afficher « Windows a protégé votre ordinateur » : cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**.
-3. Suivez l'assistant. L'installation se fait pour votre compte, sans droits administrateur, et crée un raccourci **Pixelatelier** sur le bureau et dans le menu Démarrer.
+3. Suivez l'assistant. L'installation se fait pour votre compte, sans droits administrateur. Elle crée un raccourci **Pixelatelier** sur le bureau et dans le menu Démarrer, et associe les fichiers `.pixatelier` au logiciel : un double-clic sur un projet l'ouvre directement.
 
 Pour désinstaller : **Paramètres** > **Applications** > **Applications installées** > Pixelatelier > **Désinstaller**.
 
 ### macOS
 1. Téléchargez le `.dmg` qui correspond à votre Mac et ouvrez-le.
-2. Glissez **Pixelatelier** dans le dossier **Applications**.
+2. Glissez **Pixelatelier** dans le dossier **Applications**. Les fichiers `.pixatelier` s'ouvrent ensuite d'un double-clic dans le Finder.
 3. Au premier lancement, macOS indique qu'il ne peut pas vérifier le développeur, car l'application n'est pas notarisée par Apple. Fermez ce message, puis ouvrez **Réglages Système** > **Confidentialité et sécurité**. Faites défiler jusqu'au message concernant Pixelatelier, cliquez sur **Ouvrir quand même** et confirmez. Cette étape n'est demandée qu'une seule fois.
 
    Autre solution, dans le Terminal :
@@ -79,6 +79,7 @@ Le détail de chaque version (fichiers et liste des modifications) est sur la pa
 - Écran d'accueil avec création rapide (16×16 à 256×256), « Nouvelle image… », « Ouvrir… » et fichiers récents.
 - Dimensions libres de 1 à 4096 px, formats prédéfinis (dont 320×180 et 640×360) et fond transparent, blanc ou noir.
 - Format natif versionné `.pixatelier`, qui conserve calques, images, opacités, visibilité, palette et images/s.
+- **Ouverture depuis le système** : double-clic sur un fichier `.pixatelier` (icône de document dédiée), « Ouvrir avec… » sur un projet ou une image, ou glisser un fichier sur l'icône de Pixelatelier (macOS, et Windows sur le raccourci). Si Pixelatelier est déjà ouvert, le fichier s'ouvre dans la fenêtre existante, après proposition d'enregistrer le dessin en cours.
 - Import de PNG, GIF (première image), JPEG, WebP et BMP comme nouveau document.
 - Confirmation (Enregistrer / Ne pas enregistrer / Annuler) avant de perdre des modifications : nouveau document, ouverture, fermeture du document ou de la fenêtre.
 - Écriture atomique des fichiers (fichier temporaire puis renommage).
@@ -339,7 +340,7 @@ JSON UTF-8 :
 
 ## Tests
 
-- **Unitaires** (`npm test`, 134 tests) :
+- **Unitaires** (`npm test`, 135 tests) :
   - conversion des coordonnées écran ↔ document et zoom ;
   - ligne de Bresenham dans tous les octants, rectangles, ellipses, brosse ;
   - pot de peinture : bords, diagonales, formes concaves, transparence, mode non contigu, 2048×2048 ;
@@ -348,7 +349,7 @@ JSON UTF-8 :
   - calques, images d'animation, rotation, taille du canevas ;
   - enregistrement et rechargement `.pixatelier`, versions futures refusées, fichiers corrompus détectés ;
   - PNG relu par un décodeur indépendant (zlib de Node), GIF relu par un décodeur LZW de test, planches de sprites ;
-  - service de fichiers : écriture atomique, lecture, fichiers récents ;
+  - service de fichiers : écriture atomique, lecture, fichier introuvable, fichiers récents, fichiers passés en ligne de commande ;
   - sélection : rectangle, ajout, retrait, inversion, décalage, contour, extraction, effacement et pose de pixels ;
   - baguette magique : zone contiguë, toute l'image, tolérance, transparence ;
   - outil de sélection, dessin confiné, copier, couper, coller (flottant, déplacé, validé, annulé, ramené dans le document), copie fusionnée, suppression, déplacement du contenu ;
@@ -357,7 +358,7 @@ JSON UTF-8 :
   - symétrie : points et rectangles reflétés (axe entre deux pixels ou au milieu d'un pixel, un ou deux axes), brosse paire, crayon, formes, gomme, pot de peinture, pixel parfait, sélection, changement de taille ;
   - téléchargement des mises à jour : choix du DMG selon le processeur, fichiers limités au dépôt officiel, progression, fichier incomplet refusé, nom de fichier libre ;
   - mises à jour : lecture et comparaison des numéros de version (pré-versions comprises), réponse de GitHub (version publiée, aucune version, erreur, adresse étrangère refusée), version ignorée, absence de connexion, préférences.
-- **Bout en bout** (`npm run test:e2e`, 70 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Ignorer, recherche manuelle, téléchargement avec progression, « Redémarrer et installer »), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
+- **Bout en bout** (`npm run test:e2e`, 71 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image, ouvre un projet transmis par le système (double-clic) et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Ignorer, recherche manuelle, téléchargement avec progression, « Redémarrer et installer »), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
 - Pendant le développement, les PNG et GIF produits ont aussi été relus avec Pillow (Python), sans aucun pixel différent, y compris pour un GIF de 257×199 aux couleurs aléatoires qui sature le dictionnaire LZW.
 
 ---
@@ -370,7 +371,7 @@ JSON UTF-8 :
 - Pas de tags d'animation (plages d'images nommées). La durée est la même pour toutes les images (réglage en images/s), sans durée propre à chaque image.
 - Le GIF ne connaît que la transparence tout ou rien : un pixel à moins de 50 % d'opacité devient transparent. Les navigateurs ramènent aussi les délais inférieurs à 20 ms, donc les animations au-delà de 50 images/s sont ralenties dans un GIF.
 - Lors de l'import d'images, le décodeur du navigateur peut légèrement arrondir la couleur des pixels très transparents.
-- Pas d'association de fichiers ni d'ouverture d'un fichier passé en argument ou déposé sur la fenêtre. On ouvre un fichier par « Ouvrir… » ou par les fichiers récents.
+- Un fichier glissé directement sur la fenêtre de Pixelatelier n'est pas ouvert (passer par le double-clic, « Ouvrir avec… » ou « Ouvrir… »). Sous Windows, si vous aviez déjà choisi un autre programme pour les fichiers `.pixatelier`, Windows garde ce choix : clic droit > **Ouvrir avec** > **Choisir une autre application** > Pixelatelier, en cochant « Toujours ».
 - Les confirmations à la fermeture utilisent les boîtes de dialogue natives. Elles ont été relues dans le code, mais le test de bout en bout ne peut pas les automatiser.
 - Installateurs non signés : avertissement SmartScreen sous Windows, et validation manuelle au premier lancement sur macOS.
 - Les installateurs Windows et macOS sont construits et publiés par GitHub Actions. L'application est testée sous Windows ; la version macOS n'a pas encore été vérifiée sur un vrai Mac.

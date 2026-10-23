@@ -20,6 +20,16 @@ export function isSupportedFile(filePath: string): boolean {
   return ext === PROJECT_EXTENSION || (IMAGE_EXTENSIONS as readonly string[]).includes(ext)
 }
 
+/**
+ * Fichiers à ouvrir passés en ligne de commande (double-clic sur un fichier
+ * associé, « Ouvrir avec », glisser sur l'icône sous Windows/Linux).
+ * Les options (`--…`) et les arguments sans extension prise en charge sont
+ * ignorés ; les chemins relatifs sont résolus depuis `cwd`.
+ */
+export function filesFromArgv(args: readonly string[], cwd: string): string[] {
+  return args.filter((a) => a.length > 0 && !a.startsWith('-') && isSupportedFile(a)).map((a) => path.resolve(cwd, a))
+}
+
 /** Ajoute l'extension si le chemin ne la possède pas déjà (insensible à la casse). */
 export function ensureExtension(filePath: string, ext: string): string {
   return extensionOf(filePath) === ext.toLowerCase() ? filePath : `${filePath}.${ext}`
@@ -28,7 +38,10 @@ export function ensureExtension(filePath: string, ext: string): string {
 /** Lit un projet (texte) ou une image (binaire) selon son extension. */
 export async function readOpenedFile(filePath: string): Promise<OpenedFile> {
   if (!isSupportedFile(filePath)) throw new Error(`Type de fichier non pris en charge : ${path.basename(filePath)}`)
-  const stat = await fs.stat(filePath)
+  const stat = await fs.stat(filePath).catch((err: NodeJS.ErrnoException) => {
+    if (err.code === 'ENOENT') throw new Error(`Le fichier « ${path.basename(filePath)} » est introuvable (déplacé ou supprimé ?).`)
+    throw err
+  })
   if (!stat.isFile()) throw new Error(`« ${path.basename(filePath)} » n'est pas un fichier.`)
   const isProject = extensionOf(filePath) === PROJECT_EXTENSION
   const limit = isProject ? MAX_PROJECT_BYTES : MAX_IMAGE_BYTES

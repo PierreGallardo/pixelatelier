@@ -99,6 +99,13 @@ ipcMain.handle('update:skip', (_e, version) => {
   updateCalls.skip.push(version)
 })
 ipcMain.handle('update:set-auto-check', () => undefined)
+// Fichier transmis par le système (double-clic sur un .pixatelier)
+let pendingOpen = null
+ipcMain.handle('file:take-pending', () => {
+  const file = pendingOpen
+  pendingOpen = null
+  return file
+})
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
@@ -469,6 +476,17 @@ app.whenReady().then(async () => {
     await sleep(150)
     await shot('12-symetrie.png')
     await key('X', ['alt', 'shift'])
+
+    // 20. Double-clic sur un .pixatelier alors que l'application est ouverte (document modifié)
+    const confirmBeforeOpen = confirmCalls
+    pendingOpen = { path: 'C:/fake/double-clic.pixatelier', name: 'double-clic.pixatelier', kind: 'project', text: captured.project }
+    win.webContents.send('app:open-file-request')
+    await sleep(800)
+    check(
+      'Fichier ouvert depuis le système : confirmation puis ouverture du projet',
+      confirmCalls === confirmBeforeOpen + 1 && windowState.title.startsWith('double-clic.pixatelier') && (await js(`document.querySelectorAll('.layer').length`)) === 2,
+      { confirmCalls, title: windowState.title }
+    )
 
     check('Aucune erreur dans la console', consoleErrors.length === 0, consoleErrors)
   } catch (err) {
