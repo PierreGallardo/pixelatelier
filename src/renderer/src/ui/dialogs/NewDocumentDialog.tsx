@@ -33,7 +33,8 @@ export function NewDocumentDialog({ onClose }: { onClose(): void }): React.JSX.E
   const create = async (): Promise<void> => {
     if (!valid) return
     onClose()
-    if (await actions.ensureCanDiscard()) actions.createDocument({ width: w, height: h, background })
+    // Le nouveau document s'ouvre dans un nouvel onglet.
+    actions.createDocument({ width: w, height: h, background })
   }
 
   return (

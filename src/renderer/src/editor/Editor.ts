@@ -38,6 +38,7 @@ import {
   type SelectionMode
 } from '../model/selection'
 import { History, type ActiveTarget, type HistoryEntry } from '../history/history'
+import type { Viewport } from '../model/viewport'
 import { captureStructure } from '../history/snapshot'
 import { MAX_BRUSH_SIZE, MIN_BRUSH_SIZE } from '../raster/brush'
 import { magicWandMask } from '../raster/wand'
@@ -99,6 +100,40 @@ export interface ViewCommands {
   zoomOut(): void
   fit(): void
   actualSize(): void
+  /** Position et zoom actuels de la vue (mémorisés par onglet). */
+  getViewport(): Viewport
+}
+
+export type SymmetryState = { mirrorX: boolean; mirrorY: boolean; axisX: number | null; axisY: number | null }
+
+/**
+ * État propre à un document ouvert dans un onglet. Le document actif est
+ * « déplié » dans les champs de l'éditeur ; les autres attendent ici.
+ */
+interface DocumentTab {
+  id: number
+  doc: PixelDocument
+  filePath: string | null
+  fileName: string
+  history: History
+  activeLayer: number
+  activeFrame: number
+  selectedSwatch: number | null
+  selection: Selection | null
+  symmetry: SymmetryState
+  lastFreehandPoint: { x: number; y: number } | null
+  frameRevisions: Map<string, number>
+  /** Vue à restaurer en revenant sur l'onglet (`null` = ajuster à l'écran). */
+  viewport: Viewport | null
+}
+
+/** Informations d'un onglet pour l'interface. */
+export interface TabInfo {
+  id: number
+  name: string
+  path: string | null
+  dirty: boolean
+  active: boolean
 }
 
 type Listener = () => void
@@ -115,20 +150,16 @@ export class Editor implements EditSessionHost {
   doc: PixelDocument | null = null
   filePath: string | null = null
   fileName = 'Sans titre'
-  readonly history = new History()
+  /** Historique du document actif (chaque onglet a le sien). */
+  history = new History()
 
   activeLayer = 0
   activeFrame = 0
 
   tool: ToolId = 'pencil'
   brushSize = 1
-  /** Symétrie de dessin ; axes `null` = centre de l'image. */
-  symmetry: { mirrorX: boolean; mirrorY: boolean; axisX: number | null; axisY: number | null } = {
-    mirrorX: false,
-    mirrorY: false,
-    axisX: null,
-    axisY: null
-  }
+  /** Symétrie de dessin du document actif ; axes `null` = centre de l'image. */
+  symmetry: SymmetryState = { mirrorX: false, mirrorY: false, axisX: null, axisY: null }
   /** Crayon et gomme : retire les angles en « L » des traits de 1 px. */
   pixelPerfect = false
   fillContiguous = true
@@ -163,6 +194,12 @@ export class Editor implements EditSessionHost {
   /** Incrémenté à chaque changement de structure (et à chaque annulation). */
   structureRevision = 0
   private frameRevisions = new Map<string, number>()
+  /** Documents ouverts (onglets) ; celui d'index `activeTab` est déplié dans l'éditeur. */
+  private tabs: DocumentTab[] = []
+  private activeTab = -1
+  private tabCounter = 0
+  /** Vue à restaurer par le canevas après un changement d'onglet. */
+  private viewportHint: Viewport | null = null
   private listeners = new Set<Listener>()
   private renderListeners = new Set<RenderListener>()
   private session: EditSession | null = null
@@ -215,22 +252,156 @@ export class Editor implements EditSessionHost {
     return this.doc ? `${this.fileName}${this.dirty ? ' •' : ''} — Pixelatelier` : 'Pixelatelier'
   }
 
+  /**
+   * Ouvre un document dans un nouvel onglet, placé après l'onglet actif, et l'active.
+   * Les autres documents ouverts restent intacts.
+   */
   setDocument(doc: PixelDocument, filePath: string | null, opts: { name?: string; dirty?: boolean } = {}): void {
     this.finishSession()
-    this.doc = doc
-    this.filePath = filePath
-    this.fileName = opts.name ?? (filePath ? baseName(filePath) : 'Sans titre')
-    this.history.clear(!opts.dirty)
-    this.activeLayer = doc.layers.length - 1
-    this.activeFrame = 0
+    this.saveActiveTab()
+    const history = new History()
+    history.clear(!opts.dirty)
+    const tab: DocumentTab = {
+      id: ++this.tabCounter,
+      doc,
+      filePath,
+      fileName: opts.name ?? (filePath ? baseName(filePath) : 'Sans titre'),
+      history,
+      activeLayer: doc.layers.length - 1,
+      activeFrame: 0,
+      selectedSwatch: null,
+      selection: null,
+      symmetry: { mirrorX: false, mirrorY: false, axisX: null, axisY: null },
+      lastFreehandPoint: null,
+      frameRevisions: new Map(),
+      viewport: null
+    }
+    this.tabs.splice(this.activeTab + 1, 0, tab)
+    this.activeTab += 1
+    this.loadActiveTab()
+  }
+
+  /** Recopie l'état déplié de l'éditeur dans l'onglet actif. */
+  private saveActiveTab(): void {
+    const tab = this.tabs[this.activeTab]
+    if (!tab || !this.doc) return
+    tab.doc = this.doc
+    tab.filePath = this.filePath
+    tab.fileName = this.fileName
+    tab.history = this.history
+    tab.activeLayer = this.activeLayer
+    tab.activeFrame = this.activeFrame
+    tab.selectedSwatch = this.selectedSwatch
+    tab.selection = this.selection
+    tab.symmetry = { ...this.symmetry }
+    tab.lastFreehandPoint = this.lastFreehandPoint
+    tab.frameRevisions = this.frameRevisions
+    tab.viewport = this.viewCommands?.getViewport() ?? tab.viewport
+  }
+
+  /** Déplie l'onglet actif dans l'éditeur (ou vide l'éditeur s'il n'y a plus d'onglet). */
+  private loadActiveTab(): void {
+    const tab = this.tabs[this.activeTab]
     this.playing = false
-    this.selectedSwatch = null
-    this.lastFreehandPoint = null
-    this.resetSelectionState()
-    this.frameRevisions.clear()
+    this.selectionOffset = null
+    this.selectionPreview = null
+    this.selectionVersion++
     this.structureRevision++
+    if (tab) {
+      this.doc = tab.doc
+      this.filePath = tab.filePath
+      this.fileName = tab.fileName
+      this.history = tab.history
+      this.activeLayer = tab.activeLayer
+      this.activeFrame = tab.activeFrame
+      this.selectedSwatch = tab.selectedSwatch
+      this.selection = tab.selection
+      this.symmetry = { ...tab.symmetry }
+      this.lastFreehandPoint = tab.lastFreehandPoint
+      this.frameRevisions = tab.frameRevisions
+      this.viewportHint = tab.viewport
+    } else {
+      this.doc = null
+      this.filePath = null
+      this.fileName = 'Sans titre'
+      this.history = new History()
+      this.selection = null
+      this.selectedSwatch = null
+      this.symmetry = { mirrorX: false, mirrorY: false, axisX: null, axisY: null }
+      this.lastFreehandPoint = null
+      this.frameRevisions = new Map()
+      this.viewportHint = null
+    }
     this.requestRender(null)
     this.emit()
+  }
+
+  /* -------------------------------- Onglets -------------------------------- */
+
+  get tabCount(): number {
+    return this.tabs.length
+  }
+
+  get activeTabIndex(): number {
+    return this.activeTab
+  }
+
+  /** Liste des onglets pour l'interface (l'onglet actif reflète l'état en cours). */
+  get tabList(): TabInfo[] {
+    return this.tabs.map((t, i) =>
+      i === this.activeTab
+        ? { id: t.id, name: this.fileName, path: this.filePath, dirty: this.dirty, active: true }
+        : { id: t.id, name: t.fileName, path: t.filePath, dirty: t.history.dirty, active: false }
+    )
+  }
+
+  /** Vrai si au moins un document ouvert a des modifications non enregistrées. */
+  get anyDirty(): boolean {
+    return this.tabList.some((t) => t.dirty)
+  }
+
+  /** Index de l'onglet qui affiche ce fichier, ou -1 (comparaison insensible à la casse). */
+  findTabByPath(filePath: string): number {
+    const key = filePath.toLowerCase()
+    return this.tabList.findIndex((t) => t.path !== null && t.path.toLowerCase() === key)
+  }
+
+  switchTab(index: number): void {
+    if (index === this.activeTab || index < 0 || index >= this.tabs.length) return
+    this.finishSession()
+    this.saveActiveTab()
+    this.activeTab = index
+    this.loadActiveTab()
+  }
+
+  /** Onglet suivant (`direction` > 0) ou précédent, en boucle. */
+  cycleTab(direction: number): void {
+    const n = this.tabs.length
+    if (n < 2) return
+    this.switchTab((((this.activeTab + Math.sign(direction)) % n) + n) % n)
+  }
+
+  /** Ferme un onglet sans confirmation (l'appelant a proposé d'enregistrer). */
+  closeTab(index = this.activeTab): void {
+    if (index < 0 || index >= this.tabs.length) return
+    if (index === this.activeTab) {
+      this.finishSession()
+      this.tabs.splice(index, 1)
+      // Onglet voisin : celui de gauche, sinon le nouveau premier.
+      this.activeTab = this.tabs.length === 0 ? -1 : Math.max(0, index - 1)
+      this.loadActiveTab()
+      return
+    }
+    this.tabs.splice(index, 1)
+    if (index < this.activeTab) this.activeTab--
+    this.emit()
+  }
+
+  /** Vue mémorisée pour l'onglet qui vient d'être activé (une seule lecture). */
+  takeViewportHint(): Viewport | null {
+    const vp = this.viewportHint
+    this.viewportHint = null
+    return vp
   }
 
   private resetSelectionState(): void {
@@ -240,16 +411,9 @@ export class Editor implements EditSessionHost {
     this.selectionVersion++
   }
 
+  /** Ferme le document actif (son onglet). */
   closeDocument(): void {
-    this.finishSession()
-    this.doc = null
-    this.filePath = null
-    this.fileName = 'Sans titre'
-    this.history.clear()
-    this.playing = false
-    this.resetSelectionState()
-    this.structureRevision++
-    this.emit()
+    this.closeTab(this.activeTab)
   }
 
   /**

@@ -21,7 +21,7 @@ Les installateurs de la dernière version sont sur la page **[Releases](https://
 | Mac avec puce Apple (M1, M2, M3…) | `Pixelatelier-X.Y.Z-mac-arm64.dmg` |
 | Mac avec processeur Intel | `Pixelatelier-X.Y.Z-mac-x64.dmg` |
 
-`X.Y.Z` est le numéro de la version, par exemple `0.4.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
+`X.Y.Z` est le numéro de la version, par exemple `0.5.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
 
 > **Quel Mac avez-vous ?** Menu Pomme > **À propos de ce Mac**. Une ligne « Puce » (Apple M…) correspond au fichier `arm64`, une ligne « Processeur » (Intel) au fichier `x64`.
 
@@ -57,9 +57,16 @@ Vos projets `.pixatelier` ne sont pas modifiés. La mise à jour automatique est
 
 ## Nouveautés
 
+### 0.5.0
+- **Plusieurs documents ouverts en même temps**, dans des onglets au-dessus du dessin : on passe de l'un à l'autre d'un clic ou avec `Ctrl+Tab` / `Ctrl+Maj+Tab` (`Cmd+Option+→` / `←` sur Mac).
+- Chaque document garde son historique d'annulation, son calque et son image actifs, sa sélection, sa symétrie, son zoom et sa position. Un point orange signale les documents modifiés.
+- Ouvrir un projet ou créer une nouvelle image ne ferme plus le dessin en cours : un nouvel onglet s'ouvre. Un fichier déjà ouvert affiche simplement son onglet.
+- Le presse-papiers est commun : on peut copier dans un projet et coller dans un autre.
+- Fermer un onglet (×, clic molette ou `Ctrl+W`) propose d'enregistrer s'il est modifié ; quitter le logiciel propose d'enregistrer chaque document modifié.
+
 ### 0.4.0
 - **Ouverture des projets d'un double-clic** : les fichiers `.pixatelier` sont associés à Pixelatelier (icône de document dédiée). « Ouvrir avec… » et le glisser sur l'icône du logiciel fonctionnent aussi.
-- Si Pixelatelier est déjà ouvert, le fichier s'ouvre dans la fenêtre existante, après proposition d'enregistrer le dessin en cours.
+- Si Pixelatelier est déjà ouvert, le fichier s'ouvre dans la fenêtre existante.
 
 ### 0.3.0
 - **Mise à jour depuis le logiciel** : le bouton **Mettre à jour** du bandeau télécharge la nouvelle version. Sous Windows, elle s'installe d'un clic et le logiciel redémarre tout seul ; sous macOS, l'installateur est téléchargé puis ouvert.
@@ -81,6 +88,7 @@ Le détail de chaque version (fichiers et liste des modifications) est sur la pa
 
 ### Documents
 - Écran d'accueil avec création rapide (16×16 à 256×256), « Nouvelle image… », « Ouvrir… » et fichiers récents.
+- **Plusieurs documents ouverts en même temps**, dans des onglets au-dessus du dessin. Chaque document garde son historique d'annulation, son calque et son image actifs, sa sélection, sa symétrie, son zoom et sa position. Un point orange signale les documents modifiés. On passe de l'un à l'autre d'un clic ou avec `Ctrl+Tab` / `Ctrl+Maj+Tab` (`Cmd+Option+→` / `←` sur Mac). On ferme avec ×, le clic molette ou `Ctrl+W` (enregistrement proposé si le document est modifié). Le presse-papiers est commun : on peut copier dans un projet et coller dans un autre. Ouvrir un fichier déjà ouvert affiche simplement son onglet, et quitter le logiciel propose d'enregistrer chaque document modifié.
 - Dimensions libres de 1 à 4096 px, formats prédéfinis (dont 320×180 et 640×360) et fond transparent, blanc ou noir.
 - Format natif versionné `.pixatelier`, qui conserve calques, images, opacités, visibilité, palette et images/s.
 - **Ouverture depuis le système** : double-clic sur un fichier `.pixatelier` (icône de document dédiée), « Ouvrir avec… » sur un projet ou une image, ou glisser un fichier sur l'icône de Pixelatelier (macOS, et Windows sur le raccourci). Si Pixelatelier est déjà ouvert, le fichier s'ouvre dans la fenêtre existante, après proposition d'enregistrer le dessin en cours.
@@ -192,6 +200,7 @@ Le détail de chaque version (fichiers et liste des modifications) est sur la pa
 | Couper / Copier / Coller | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` | Tout sélectionner / désélectionner | `Ctrl+A` / `Ctrl+D` |
 | Copier tous les calques | `Ctrl+Maj+C` | Inverser la sélection | `Ctrl+Maj+I` |
 | Pixel parfait | `P` | Symétrie gauche/droite / haut/bas | `Alt+Maj+X` / `Alt+Maj+Y` |
+| Document suivant / précédent | `Ctrl+Tab` / `Ctrl+Maj+Tab` | Fermer le document | `Ctrl+W` |
 
 ---
 
@@ -259,7 +268,7 @@ src/
     ├── model/             Modèle du document : bitmaps RGBA, couleurs, palette, composition, sélection, géométrie de la vue
     ├── raster/            Algorithmes de tracé : ligne, rectangle, ellipse, brosse, remplissage, baguette magique, pixel parfait, symétrie
     ├── history/           Historique : patchs de pixels et instantanés de structure
-    ├── editor/            État central (Editor) et sessions de modification (EditSession)
+    ├── editor/            État central (Editor, onglets des documents ouverts) et sessions de modification (EditSession)
     ├── tools/             Comportement de chaque outil (appui, glisser, relâchement)
     ├── io/                Format .pixatelier, base64, compression zlib
     ├── export/            Encodeurs PNG et GIF, quantification, planche de sprites
@@ -278,6 +287,9 @@ build/icon.png             Icône de l'application (originale)
 - Un `PixelDocument` contient `width`, `height`, `fps`, `palette`, `frames[]` et `layers[]`.
 - Chaque calque possède **une cellule par image** (`layers[l].cels[f]`). Une cellule est un `Bitmap` : un `Uint8ClampedArray` RGBA 8 bits non prémultiplié, organisé ligne par ligne.
 - Les calques sont rangés du bas (index 0) vers le haut.
+
+### Onglets
+L'éditeur garde un seul document « déplié » dans ses champs (document, historique, calque et image actifs, sélection, symétrie…). Chaque onglet mémorise ces informations pour son document. Changer d'onglet valide d'abord une modification en cours (trait, collage), range l'état du document actif dans son onglet avec sa vue (zoom, position), puis déplie celui du document choisi. Les réglages d'outils, les couleurs et le presse-papiers sont communs à tous les documents.
 
 ### Rendu
 - `CanvasRenderer` compose les calques visibles de l'image active en TypeScript (`composeFrame`, opérateur « source-over » avec opacité du calque).
@@ -344,7 +356,7 @@ JSON UTF-8 :
 
 ## Tests
 
-- **Unitaires** (`npm test`, 135 tests) :
+- **Unitaires** (`npm test`, 146 tests) :
   - conversion des coordonnées écran ↔ document et zoom ;
   - ligne de Bresenham dans tous les octants, rectangles, ellipses, brosse ;
   - pot de peinture : bords, diagonales, formes concaves, transparence, mode non contigu, 2048×2048 ;
@@ -361,8 +373,9 @@ JSON UTF-8 :
   - mode pixel parfait : détection des angles en L, escaliers, mouvements rapides, couleur d'origine restaurée, brosse > 1 px, gomme ;
   - symétrie : points et rectangles reflétés (axe entre deux pixels ou au milieu d'un pixel, un ou deux axes), brosse paire, crayon, formes, gomme, pot de peinture, pixel parfait, sélection, changement de taille ;
   - téléchargement des mises à jour : choix du DMG selon le processeur, fichiers limités au dépôt officiel, progression, fichier incomplet refusé, nom de fichier libre ;
+  - onglets : documents, historiques et états séparés, état « modifié » par onglet, presse-papiers commun, passage en boucle, fichier déjà ouvert, fermeture, vue mémorisée ;
   - mises à jour : lecture et comparaison des numéros de version (pré-versions comprises), réponse de GitHub (version publiée, aucune version, erreur, adresse étrangère refusée), version ignorée, absence de connexion, préférences.
-- **Bout en bout** (`npm run test:e2e`, 71 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image, ouvre un projet transmis par le système (double-clic) et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Ignorer, recherche manuelle, téléchargement avec progression, « Redémarrer et installer »), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
+- **Bout en bout** (`npm run test:e2e`, 78 vérifications) : l'application compilée et son preload tournent dans une fenêtre Electron hors écran, pilotée par de vrais événements souris et clavier. Le test dessine avec chaque outil, annule et rétablit, utilise calques, opacité, images et pelures d'oignon, lance la lecture, exporte en PNG, GIF et planche, enregistre puis rouvre, importe une image, ouvre un projet transmis par le système (double-clic), passe d’un onglet à l’autre, ferme des onglets, enregistre chaque document modifié en quittant et vérifie les confirmations. Il couvre aussi le bandeau de nouvelle version (Ignorer, recherche manuelle, téléchargement avec progression, « Redémarrer et installer »), la sélection, le copier/couper/coller (y compris une image venant d'un autre logiciel), le déplacement et la baguette magique en sélection et en suppression. Les boîtes de dialogue natives, le presse-papiers système et la réponse de GitHub sont remplacés par des doublures. Sous Linux sans affichage, lancez ce test avec `xvfb-run`.
 - Pendant le développement, les PNG et GIF produits ont aussi été relus avec Pillow (Python), sans aucun pixel différent, y compris pour un GIF de 257×199 aux couleurs aléatoires qui sature le dictionnaire LZW.
 
 ---
