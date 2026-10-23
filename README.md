@@ -21,7 +21,7 @@ Les installateurs de la dernière version sont sur la page **[Releases](https://
 | Mac avec puce Apple (M1, M2, M3…) | `Pixelatelier-X.Y.Z-mac-arm64.dmg` |
 | Mac avec processeur Intel | `Pixelatelier-X.Y.Z-mac-x64.dmg` |
 
-`X.Y.Z` est le numéro de la version, par exemple `0.3.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
+`X.Y.Z` est le numéro de la version, par exemple `0.4.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
 
 > **Quel Mac avez-vous ?** Menu Pomme > **À propos de ce Mac**. Une ligne « Puce » (Apple M…) correspond au fichier `arm64`, une ligne « Processeur » (Intel) au fichier `x64`.
 
@@ -56,6 +56,10 @@ Vos projets `.pixatelier` ne sont pas modifiés. La mise à jour automatique est
 ---
 
 ## Nouveautés
+
+### 0.4.0
+- **Ouverture des projets d'un double-clic** : les fichiers `.pixatelier` sont associés à Pixelatelier (icône de document dédiée). « Ouvrir avec… » et le glisser sur l'icône du logiciel fonctionnent aussi.
+- Si Pixelatelier est déjà ouvert, le fichier s'ouvre dans la fenêtre existante, après proposition d'enregistrer le dessin en cours.
 
 ### 0.3.0
 - **Mise à jour depuis le logiciel** : le bouton **Mettre à jour** du bandeau télécharge la nouvelle version. Sous Windows, elle s'installe d'un clic et le logiciel redémarre tout seul ; sous macOS, l'installateur est téléchargé puis ouvert.
