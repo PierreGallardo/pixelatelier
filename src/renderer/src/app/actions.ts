@@ -57,7 +57,7 @@ export class AppActions {
   }
 
   /**
-   * Vérifie qu'on peut remplacer le document courant : propose d'enregistrer
+   * Vérifie qu'on peut abandonner le document actif : propose d'enregistrer
    * s'il contient des modifications. Retourne faux si l'utilisateur annule.
    */
   async ensureCanDiscard(): Promise<boolean> {
@@ -77,9 +77,26 @@ export class AppActions {
     }
   }
 
+  /**
+   * Vérifie, document par document, qu'on peut tout abandonner (avant de quitter
+   * pour installer une mise à jour). Chaque document modifié est affiché puis
+   * l'utilisateur choisit d'enregistrer, d'abandonner ou d'annuler.
+   */
+  async ensureAllCanDiscard(): Promise<boolean> {
+    const editor = this.editor
+    for (const tab of editor.tabList) {
+      if (!tab.dirty) continue
+      const index = editor.tabList.findIndex((t) => t.id === tab.id)
+      if (index < 0) continue
+      editor.switchTab(index)
+      if (!(await this.ensureCanDiscard())) return false
+    }
+    return true
+  }
+
+  /** Les documents ouvrent dans un nouvel onglet : rien à confirmer. */
   open(): Promise<void> {
     return this.guard(async () => {
-      if (!(await this.ensureCanDiscard())) return
       const file = await api.openFile()
       if (file) await this.loadOpened(file)
     }, undefined)
@@ -87,26 +104,31 @@ export class AppActions {
 
   openRecent(path: string): Promise<void> {
     return this.guard(async () => {
-      if (!(await this.ensureCanDiscard())) return
+      if (this.showIfOpen(path)) return
       await this.loadOpened(await api.openRecent(path))
     }, undefined)
   }
 
-  /**
-   * Ouvre le fichier transmis par le système (double-clic, « Ouvrir avec »…),
-   * après avoir proposé d'enregistrer le document en cours.
-   */
+  /** Ouvre, dans un nouvel onglet, le fichier transmis par le système (double-clic, « Ouvrir avec »…). */
   openPendingFile(): Promise<void> {
     return this.guard(async () => {
       const file = await api.takePendingFile()
-      if (!file) return
-      if (!(await this.ensureCanDiscard())) return
-      await this.loadOpened(file)
+      if (file) await this.loadOpened(file)
     }, undefined)
+  }
+
+  /** Si ce fichier est déjà ouvert, affiche son onglet et retourne vrai. */
+  private showIfOpen(path: string): boolean {
+    const index = this.editor.findTabByPath(path)
+    if (index < 0) return false
+    this.editor.switchTab(index)
+    this.editor.notify(`« ${this.editor.fileName} » est déjà ouvert.`)
+    return true
   }
 
   private async loadOpened(file: OpenedFile): Promise<void> {
     if (file.kind === 'project') {
+      if (isDesktop && this.showIfOpen(file.path)) return
       if (file.text === undefined) throw new Error('Fichier vide.')
       const doc = await parseProject(file.text)
       this.editor.setDocument(doc, isDesktop ? file.path : null, { name: file.name })
@@ -145,15 +167,45 @@ export class AppActions {
     return true
   }
 
-  /** Enregistre puis ferme la fenêtre (demande venant du processus principal). */
+  /**
+   * Fermeture de la fenêtre avec « Enregistrer » : enregistre chaque document
+   * modifié (en l'affichant), puis ferme. Une annulation interrompt la fermeture.
+   */
   async saveAndClose(): Promise<void> {
-    const ok = await this.save(false)
+    const ok = await this.guard(async () => {
+      const editor = this.editor
+      for (const tab of editor.tabList) {
+        if (!tab.dirty) continue
+        const index = editor.tabList.findIndex((t) => t.id === tab.id)
+        if (index < 0) continue
+        editor.switchTab(index)
+        if (!(await this.saveInternal(false))) return false
+      }
+      return true
+    }, false)
     if (ok) api.closeNow()
   }
 
+  /** Ferme l'onglet actif, après avoir proposé d'enregistrer. */
   async closeDocument(): Promise<void> {
+    await this.closeTab(this.editor.activeTabIndex)
+  }
+
+  /**
+   * Ferme un onglet. S'il contient des modifications, il est d'abord affiché
+   * et l'utilisateur peut enregistrer ou annuler.
+   */
+  async closeTab(index: number): Promise<void> {
     await this.guard(async () => {
-      if (await this.ensureCanDiscard()) this.editor.closeDocument()
+      const editor = this.editor
+      const tab = editor.tabList[index]
+      if (!tab) return
+      if (tab.dirty) {
+        editor.switchTab(index)
+        if (!(await this.ensureCanDiscard())) return
+      }
+      const current = editor.tabList.findIndex((t) => t.id === tab.id)
+      if (current >= 0) editor.closeTab(current)
     }, undefined)
   }
 

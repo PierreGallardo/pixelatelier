@@ -26,6 +26,8 @@ const MENUS: MenuDef[] = [
       'file.exportSheet',
       '-',
       'file.close',
+      'file.nextTab',
+      'file.prevTab',
       ...(isDesktop && !isMac ? (['-', 'file.quit'] as MenuItem[]) : [])
     ]
   },
