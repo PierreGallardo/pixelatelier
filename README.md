@@ -21,7 +21,7 @@ Les installateurs de la dernière version sont sur la page **[Releases](https://
 | Mac avec puce Apple (M1, M2, M3…) | `Pixelatelier-X.Y.Z-mac-arm64.dmg` |
 | Mac avec processeur Intel | `Pixelatelier-X.Y.Z-mac-x64.dmg` |
 
-`X.Y.Z` est le numéro de la version, par exemple `0.4.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
+`X.Y.Z` est le numéro de la version, par exemple `0.5.0`. Les fichiers « Source code (zip / tar.gz) » contiennent le code, pas l'application : ignorez-les.
 
 > **Quel Mac avez-vous ?** Menu Pomme > **À propos de ce Mac**. Une ligne « Puce » (Apple M…) correspond au fichier `arm64`, une ligne « Processeur » (Intel) au fichier `x64`.
 
@@ -57,9 +57,16 @@ Vos projets `.pixatelier` ne sont pas modifiés. La mise à jour automatique est
 
 ## Nouveautés
 
+### 0.5.0
+- **Plusieurs documents ouverts en même temps**, dans des onglets au-dessus du dessin : on passe de l'un à l'autre d'un clic ou avec `Ctrl+Tab` / `Ctrl+Maj+Tab` (`Cmd+Option+→` / `←` sur Mac).
+- Chaque document garde son historique d'annulation, son calque et son image actifs, sa sélection, sa symétrie, son zoom et sa position. Un point orange signale les documents modifiés.
+- Ouvrir un projet ou créer une nouvelle image ne ferme plus le dessin en cours : un nouvel onglet s'ouvre. Un fichier déjà ouvert affiche simplement son onglet.
+- Le presse-papiers est commun : on peut copier dans un projet et coller dans un autre.
+- Fermer un onglet (×, clic molette ou `Ctrl+W`) propose d'enregistrer s'il est modifié ; quitter le logiciel propose d'enregistrer chaque document modifié.
+
 ### 0.4.0
 - **Ouverture des projets d'un double-clic** : les fichiers `.pixatelier` sont associés à Pixelatelier (icône de document dédiée). « Ouvrir avec… » et le glisser sur l'icône du logiciel fonctionnent aussi.
-- Si Pixelatelier est déjà ouvert, le fichier s'ouvre dans un nouvel onglet de la fenêtre existante.
+- Si Pixelatelier est déjà ouvert, le fichier s'ouvre dans la fenêtre existante.
 
 ### 0.3.0
 - **Mise à jour depuis le logiciel** : le bouton **Mettre à jour** du bandeau télécharge la nouvelle version. Sous Windows, elle s'installe d'un clic et le logiciel redémarre tout seul ; sous macOS, l'installateur est téléchargé puis ouvert.
