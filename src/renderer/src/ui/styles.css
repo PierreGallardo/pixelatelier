@@ -1439,3 +1439,89 @@ input[type='radio'] {
   font-family: var(--mono);
   font-size: 12px;
 }
+
+/* ------------------------------ Onglets ------------------------------ */
+
+.tabbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 34px;
+  padding: 4px 8px 0;
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: none;
+}
+
+.tabbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabbar__tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  max-width: 220px;
+  padding: 0 6px 0 12px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex: none;
+}
+
+.tabbar__tab:hover {
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+.tabbar__tab.is-active {
+  background: var(--bg-1);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.tabbar__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabbar__dirty {
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tabbar__close,
+.tabbar__new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex: none;
+}
+
+.tabbar__new {
+  width: 26px;
+  height: 26px;
+  margin: 0 0 2px 4px;
+  align-self: center;
+}
+
+.tabbar__close:hover,
+.tabbar__new:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}

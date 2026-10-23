@@ -4,7 +4,7 @@ import { useApp } from '../useEditor'
 import { Modal } from './Modal'
 
 const GROUPS: { title: string; ids: CommandId[] }[] = [
-  { title: 'Fichier', ids: ['file.new', 'file.open', 'file.save', 'file.saveAs', 'file.exportPng', 'file.exportGif', 'file.exportSheet', 'file.close'] },
+  { title: 'Fichier', ids: ['file.new', 'file.open', 'file.save', 'file.saveAs', 'file.exportPng', 'file.exportGif', 'file.exportSheet', 'file.close', 'file.nextTab', 'file.prevTab'] },
   {
     title: 'Édition et sélection',
     ids: [

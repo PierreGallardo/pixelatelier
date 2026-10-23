@@ -29,6 +29,8 @@ export type CommandId =
   | 'file.exportGif'
   | 'file.exportSheet'
   | 'file.close'
+  | 'file.nextTab'
+  | 'file.prevTab'
   | 'file.quit'
   | 'edit.undo'
   | 'edit.redo'
@@ -107,6 +109,18 @@ export function buildCommands(editor: Editor, actions: AppActions, openDialog: (
     'file.exportGif': { label: 'Exporter l’animation en GIF…', keys: ['mod+shift+e'], run: () => openDialog('export-gif'), enabled: hasDoc },
     'file.exportSheet': { label: 'Exporter une planche de sprites…', keys: ['mod+alt+e'], run: () => openDialog('export-sheet'), enabled: hasDoc },
     'file.close': { label: 'Fermer le document', keys: ['mod+w'], run: () => void actions.closeDocument(), enabled: hasDoc },
+    'file.nextTab': {
+      label: 'Document suivant',
+      keys: isMac ? ['mod+alt+arrowright'] : ['mod+tab', 'mod+pagedown'],
+      run: () => editor.cycleTab(1),
+      enabled: () => editor.tabCount > 1
+    },
+    'file.prevTab': {
+      label: 'Document précédent',
+      keys: isMac ? ['mod+alt+arrowleft'] : ['mod+shift+tab', 'mod+pageup'],
+      run: () => editor.cycleTab(-1),
+      enabled: () => editor.tabCount > 1
+    },
     'file.quit': { label: 'Quitter', keys: isMac ? ['mod+q'] : [], run: () => window.close(), enabled: () => isDesktop },
 
     'edit.undo': {
@@ -323,7 +337,10 @@ const KEY_NAMES: Record<string, string> = {
   space: 'Espace',
   home: 'Début',
   end: 'Fin',
-  escape: 'Échap'
+  escape: 'Échap',
+  tab: 'Tab',
+  pagedown: 'Pg suiv',
+  pageup: 'Pg préc'
 }
 
 /** Texte lisible d'un raccourci, adapté à la plateforme (« Ctrl+Maj+S » ou « ⌘⇧S »). */

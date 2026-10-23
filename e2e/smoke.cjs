@@ -99,6 +99,9 @@ ipcMain.handle('update:skip', (_e, version) => {
   updateCalls.skip.push(version)
 })
 ipcMain.handle('update:set-auto-check', () => undefined)
+// Fermeture de la fenêtre demandée par l'interface
+let closeNowCalls = 0
+ipcMain.on('window:close-now', () => closeNowCalls++)
 // Fichier transmis par le système (double-clic sur un .pixatelier)
 let pendingOpen = null
 ipcMain.handle('file:take-pending', () => {
@@ -382,10 +385,10 @@ app.whenReady().then(async () => {
     nextOpen = { path: 'C:/fake/big.png', name: 'big.png', kind: 'image', bytes: new Uint8Array(bigPng()) }
     await key('O', ['control'])
     await sleep(900)
-    check('Confirmation demandée avant d’ouvrir (document modifié)', confirmCalls === callsBefore + 1, { confirmCalls })
+    check('Ouvrir avec un document modifié : nouvel onglet, sans confirmation', confirmCalls === callsBefore && (await js(`document.querySelectorAll('.tabbar__tab').length`)) === 2, { confirmCalls, onglets: await js(`document.querySelectorAll('.tabbar__tab').length`) })
     check('Image importée 1254 × 1254', /1254 × 1254 px/.test(await statusText()))
     const bigZoom = await js(`document.querySelector('.options__zoom').textContent`)
-    check('Grande image ajustée à l’écran (47 %)', bigZoom === '47 %', bigZoom)
+    check('Grande image ajustée à l’écran (40 à 50 %)', parseInt(bigZoom) >= 40 && parseInt(bigZoom) <= 50, bigZoom)
     check('Image importée marquée comme non enregistrée', windowState && windowState.dirty === true, windowState)
     await shot('08-import.png')
     // Ctrl+N avec document modifié : la boîte « Nouvelle image » puis la confirmation
@@ -393,7 +396,7 @@ app.whenReady().then(async () => {
     await sleep(200)
     await click(...(await center('.modal__footer .btn--primary')))
     await sleep(400)
-    check('Nouveau document après confirmation', confirmCalls === callsBefore + 2 && /32 × 32 px/.test(await statusText()), { confirmCalls })
+    check('Nouveau document dans un troisième onglet', confirmCalls === callsBefore && /32 × 32 px/.test(await statusText()) && (await js(`document.querySelectorAll('.tabbar__tab').length`)) === 3, { confirmCalls })
 
     // 17. Sélection, presse-papiers et baguette magique (document 32×32 vierge)
     const pal = await js(`[...document.querySelectorAll('.palette__swatch')].slice(0, 12).map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.x + r.width/2), Math.round(r.y + r.height/2)] })`)
@@ -483,9 +486,51 @@ app.whenReady().then(async () => {
     win.webContents.send('app:open-file-request')
     await sleep(800)
     check(
-      'Fichier ouvert depuis le système : confirmation puis ouverture du projet',
-      confirmCalls === confirmBeforeOpen + 1 && windowState.title.startsWith('double-clic.pixatelier') && (await js(`document.querySelectorAll('.layer').length`)) === 2,
+      'Fichier ouvert depuis le système : nouvel onglet, sans perdre le dessin en cours',
+      confirmCalls === confirmBeforeOpen && windowState.title.startsWith('double-clic.pixatelier') && (await js(`document.querySelectorAll('.layer').length`)) === 2 && (await js(`document.querySelectorAll('.tabbar__tab').length`)) === 4,
       { confirmCalls, title: windowState.title }
+    )
+    await sleep(200)
+    await shot('13-onglets.png')
+
+    // 21. Onglets : passer d'un document à l'autre, fermer un document modifié
+    const activeName = () => js(`document.querySelector('.tabbar__tab.is-active .tabbar__name')?.textContent ?? ''`)
+    await key('Tab', ['control'])
+    check('Ctrl+Tab : document suivant (retour au premier onglet)', (await activeName()) === 'test.pixatelier', await activeName())
+    await key('Tab', ['control', 'shift'])
+    check('Ctrl+Maj+Tab : document précédent', (await activeName()) === 'double-clic.pixatelier', await activeName())
+    // Le 3e onglet (dessin 32×32 en cours, modifié) a gardé ses pixels.
+    await click(...(await center('.tabbar__tab', 'Sans titre')))
+    check('Un onglet retrouve son dessin intact', (await shown(25, 30))[0] > 150 && /32 × 32 px/.test(await statusText()))
+    check('Point « modifié » sur l’onglet', await js(`!!document.querySelector('.tabbar__tab.is-active .tabbar__dirty')`))
+    const confirmBeforeClose = confirmCalls
+    await key('W', ['control'])
+    await sleep(300)
+    check('Fermer un document modifié demande confirmation, puis ferme l’onglet', confirmCalls === confirmBeforeClose + 1 && (await js(`document.querySelectorAll('.tabbar__tab').length`)) === 3, { confirmCalls, onglets: await js(`document.querySelectorAll('.tabbar__tab').length`) })
+    const closeBtn = await js(`(() => { const t = [...document.querySelectorAll('.tabbar__tab')].find(e => !e.classList.contains('is-active')); const b = t?.querySelector('.tabbar__close'); if (!b) return null; const r = b.getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] })()`)
+    const titleBeforeX = windowState.title
+    if (closeBtn) await click(...closeBtn)
+    check('Bouton × : ferme un autre onglet sans changer de document', (await js(`document.querySelectorAll('.tabbar__tab').length`)) === 2 && windowState.title === titleBeforeX, { avant: titleBeforeX, après: windowState.title })
+
+    // 22. Quitter avec « Enregistrer » : chaque document modifié est enregistré, puis la fenêtre se ferme
+    await click(...at(4, 4)) // onglet actif modifié
+    await key('Tab', ['control'])
+    await click(...at(4, 4)) // l'autre onglet aussi
+    const countDirty = () => js(`document.querySelectorAll('.tabbar__dirty').length`)
+    const dirtyBefore = await countDirty()
+    let savesDuringQuit = 0
+    ipcMain.removeHandler('file:save-project')
+    ipcMain.handle('file:save-project', (_e, req) => {
+      savesDuringQuit++
+      captured.project = req.content
+      return { path: `C:/fake/quit-${savesDuringQuit}.pixatelier`, name: `quit-${savesDuringQuit}.pixatelier` }
+    })
+    win.webContents.send('app:save-before-close')
+    await sleep(1200)
+    check(
+      'Quitter : tous les documents modifiés sont enregistrés, puis fermeture',
+      dirtyBefore === 2 && savesDuringQuit === 2 && closeNowCalls === 1 && (await countDirty()) === 0,
+      { dirtyBefore, savesDuringQuit, closeNowCalls }
     )
 
     check('Aucune erreur dans la console', consoleErrors.length === 0, consoleErrors)

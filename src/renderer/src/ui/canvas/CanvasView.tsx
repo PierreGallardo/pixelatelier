@@ -62,7 +62,8 @@ export function CanvasView(): React.JSX.Element {
       actualSize: () => {
         const doc = editor.doc
         if (doc) setViewport(centerViewport(doc.width, doc.height, renderer.width, renderer.height, 1))
-      }
+      },
+      getViewport: () => ({ ...renderer.viewport })
     }
 
     // Taille du canevas = taille de son conteneur, en pixels physiques.
@@ -89,7 +90,10 @@ export function CanvasView(): React.JSX.Element {
         lastDoc = doc
         lastSize = size
         renderer.invalidate(null)
-        if (sized) fit()
+        // Changement d'onglet : on retrouve la vue laissée sur ce document.
+        const hint = editor.takeViewportHint()
+        if (hint) setViewport(hint)
+        else if (sized) fit()
       } else if (size !== lastSize && doc) {
         lastSize = size
         renderer.invalidate(null)

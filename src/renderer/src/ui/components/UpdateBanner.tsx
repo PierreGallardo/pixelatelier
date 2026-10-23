@@ -38,7 +38,7 @@ export function UpdateBanner(): React.JSX.Element | null {
         <button
           type="button"
           className="btn btn--primary btn--small"
-          onClick={() => void updates.install(() => actions.ensureCanDiscard(), notify)}
+          onClick={() => void updates.install(() => actions.ensureAllCanDiscard(), notify)}
         >
           Redémarrer et installer
         </button>

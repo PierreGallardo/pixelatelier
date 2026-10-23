@@ -7,6 +7,7 @@ import { buildCommands, buildKeymap, comboFromEvent, isTypingTarget, runCommand 
 import { ColorPanel } from './components/ColorPanel'
 import { LayersPanel } from './components/LayersPanel'
 import { MenuBar } from './components/MenuBar'
+import { TabBar } from './components/TabBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { updates } from './updateStore'
 import { PalettePanel } from './components/PalettePanel'
@@ -42,8 +43,10 @@ function NoticeToast(): React.JSX.Element | null {
 function WindowStateSync(): null {
   const editor = useEditor()
   const title = editor.title
-  const dirty = editor.dirty
-  const name = editor.fileName
+  // Plusieurs documents : la fermeture doit avertir si l'un d'eux est modifié.
+  const dirtyTabs = editor.tabList.filter((t) => t.dirty)
+  const dirty = dirtyTabs.length > 0
+  const name = dirtyTabs.length > 0 ? dirtyTabs.map((t) => t.name).join(', ') : editor.fileName
   useEffect(() => {
     api.setWindowState({ title, dirty, documentName: name })
   }, [title, dirty, name])
@@ -60,6 +63,7 @@ function WindowStateSync(): null {
 function Workspace(): React.JSX.Element {
   return (
     <div className="workspace">
+      <TabBar />
       <ToolOptionsBar />
       <div className="workspace__main">
         <Toolbar />
