@@ -1,7 +1,7 @@
 {
   "name": "pixelatelier",
   "productName": "Pixelatelier",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Éditeur de pixel art et d'animation de bureau (Electron + React + TypeScript)",
   "main": "./out/main/index.js",
   "author": "Pixelatelier",
@@ -87,7 +87,24 @@
       "icon": "build/icon.png",
       "identity": "-",
       "hardenedRuntime": false,
-      "artifactName": "Pixelatelier-${version}-mac-${arch}.${ext}"
+      "artifactName": "Pixelatelier-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "app.pixelatelier.project",
+            "UTTypeDescription": "Projet Pixelatelier",
+            "UTTypeConformsTo": [
+              "public.data"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "pixatelier"
+              ],
+              "public.mime-type": "application/x-pixatelier"
+            }
+          }
+        ]
+      }
     },
     "dmg": {
       "title": "Pixelatelier ${version}"
@@ -106,6 +123,16 @@
         "owner": "PierreGallardo",
         "repo": "pixelatelier",
         "releaseType": "release"
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "pixatelier",
+        "name": "Projet Pixelatelier",
+        "description": "Projet Pixelatelier",
+        "mimeType": "application/x-pixatelier",
+        "role": "Editor",
+        "icon": "pixatelier"
       }
     ]
   }

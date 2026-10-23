@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { ensureExtension, isSupportedFile, readOpenedFile, RecentFiles, writeFileAtomic, MAX_RECENT } from '../src/main/fileService'
+import { ensureExtension, filesFromArgv, isSupportedFile, readOpenedFile, RecentFiles, writeFileAtomic, MAX_RECENT } from '../src/main/fileService'
 
 const dir = mkdtempSync(path.join(tmpdir(), 'pixelatelier-test-'))
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
@@ -12,6 +12,16 @@ describe('service de fichiers (processus principal)', () => {
     expect(ensureExtension('/a/b', 'pixatelier')).toBe('/a/b.pixatelier')
     expect(ensureExtension('/a/b.PIXATELIER', 'pixatelier')).toBe('/a/b.PIXATELIER')
     expect(ensureExtension('C:\\x\\sprite.png', 'png')).toBe('C:\\x\\sprite.png')
+  })
+
+  it('extrait les fichiers à ouvrir de la ligne de commande', () => {
+    const cwd = path.resolve('/projets')
+    // Double-clic sous Windows : chemin absolu, éventuellement précédé d'options ajoutées par Chromium ou le programme de mise à jour.
+    const projet = path.resolve(cwd, 'Dessins', 'héros.pixatelier')
+    expect(filesFromArgv(['--updated', '--original-process-start-time=1', projet], cwd)).toEqual([projet])
+    // Chemin relatif (lancement depuis un terminal) et images acceptées ; autres fichiers ignorés.
+    expect(filesFromArgv(['sprite.PNG', 'notes.txt', '.', ''], cwd)).toEqual([path.resolve(cwd, 'sprite.PNG')])
+    expect(filesFromArgv([], cwd)).toEqual([])
   })
 
   it('reconnaît les types de fichiers pris en charge', () => {
@@ -42,6 +52,7 @@ describe('service de fichiers (processus principal)', () => {
     expect([...(i.bytes ?? [])]).toEqual([0x89, 0x50, 0x4e, 0x47])
 
     await expect(readOpenedFile(path.join(dir, 'virus.exe'))).rejects.toThrow(/non pris en charge/)
+    await expect(readOpenedFile(path.join(dir, 'fantome.pixatelier'))).rejects.toThrow(/« fantome.pixatelier » est introuvable/)
   })
 
   it('gère la liste des fichiers récents (ordre, doublons, limite, persistance)', async () => {

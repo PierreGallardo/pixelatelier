@@ -27,7 +27,9 @@ export const IPC = {
   updateMode: 'update:mode',
   updateDownload: 'update:download',
   updateInstall: 'update:install',
-  updateProgress: 'update:progress'
+  updateProgress: 'update:progress',
+  takePendingFile: 'file:take-pending',
+  openFileRequest: 'app:open-file-request'
 } as const
 
 /**
@@ -158,4 +160,11 @@ export interface PixelatelierApi {
   /** Quitte et installe la mise à jour téléchargée (mode `install`). */
   installUpdate(): Promise<void>
   onUpdateProgress(callback: (progress: UpdateProgress) => void): () => void
+  /**
+   * Fichier transmis par le système (double-clic sur un .pixatelier, « Ouvrir avec »…),
+   * lu et retiré de la file d'attente ; `null` s'il n'y en a pas.
+   */
+  takePendingFile(): Promise<OpenedFile | null>
+  /** Le système demande d'ouvrir un fichier alors que l'application tourne déjà. */
+  onOpenFileRequest(callback: () => void): () => void
 }
