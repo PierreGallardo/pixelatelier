@@ -140,6 +140,12 @@ const webApi: PixelatelierApi = {
   async installUpdate(): Promise<void> {},
   onUpdateProgress(): () => void {
     return () => undefined
+  },
+  async takePendingFile(): Promise<OpenedFile | null> {
+    return null
+  },
+  onOpenFileRequest(): () => void {
+    return () => undefined
   }
 }
 

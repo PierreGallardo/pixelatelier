@@ -41,6 +41,14 @@ const api: PixelatelierApi = {
   getUpdateMode: () => ipcRenderer.invoke(IPC.updateMode),
   downloadUpdate: () => ipcRenderer.invoke(IPC.updateDownload),
   installUpdate: () => ipcRenderer.invoke(IPC.updateInstall),
+  takePendingFile: () => ipcRenderer.invoke(IPC.takePendingFile),
+  onOpenFileRequest: (callback) => {
+    const listener = (): void => callback()
+    ipcRenderer.on(IPC.openFileRequest, listener)
+    return () => {
+      ipcRenderer.removeListener(IPC.openFileRequest, listener)
+    }
+  },
   onUpdateProgress: (callback) => {
     const listener = (_event: unknown, progress: UpdateProgress): void => callback(progress)
     ipcRenderer.on(IPC.updateProgress, listener)

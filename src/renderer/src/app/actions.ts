@@ -92,6 +92,19 @@ export class AppActions {
     }, undefined)
   }
 
+  /**
+   * Ouvre le fichier transmis par le système (double-clic, « Ouvrir avec »…),
+   * après avoir proposé d'enregistrer le document en cours.
+   */
+  openPendingFile(): Promise<void> {
+    return this.guard(async () => {
+      const file = await api.takePendingFile()
+      if (!file) return
+      if (!(await this.ensureCanDiscard())) return
+      await this.loadOpened(file)
+    }, undefined)
+  }
+
   private async loadOpened(file: OpenedFile): Promise<void> {
     if (file.kind === 'project') {
       if (file.text === undefined) throw new Error('Fichier vide.')

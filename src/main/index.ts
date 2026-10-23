@@ -30,7 +30,7 @@ import {
   type UpdatePreferences,
   type WindowState
 } from '../shared/api'
-import { ensureExtension, readOpenedFile, RecentFiles, SettingsStore, writeFileAtomic } from './fileService'
+import { ensureExtension, filesFromArgv, readOpenedFile, RecentFiles, SettingsStore, writeFileAtomic } from './fileService'
 import { checkForUpdates, isReleaseUrl, parseVersion } from './updates'
 import { downloadUpdate, getUpdateMode, installUpdate } from './autoUpdate'
 
@@ -48,6 +48,8 @@ let quitting = false
 let lastDirectory: string | null = null
 let recent: RecentFiles
 let settings: SettingsStore
+/** Fichier reçu du système, en attente d'ouverture par l'interface. */
+let pendingFile: string | null = null
 
 const MAX_EXPORT_BYTES = 512 * 1024 * 1024
 const MAX_CLIPBOARD_BYTES = 64 * 1024 * 1024
@@ -204,6 +206,38 @@ async function handleOpenFile(event: IpcMainInvokeEvent): Promise<OpenedFile | n
   const filePath = result.filePaths[0]
   lastDirectory = path.dirname(filePath)
   const file = await readOpenedFile(filePath)
+  if (file.kind === 'project') await recent.add(filePath)
+  return file
+}
+
+/* --------------------- Fichiers ouverts depuis le système --------------------- */
+
+/**
+ * Le système demande d'ouvrir un fichier (double-clic sur un .pixatelier,
+ * « Ouvrir avec », glisser sur l'icône). Le fichier est mis en attente et
+ * l'interface, prévenue, vient le chercher après avoir proposé d'enregistrer
+ * le document en cours.
+ */
+function requestOpenFile(filePath: string): void {
+  pendingFile = filePath
+  const win = mainWindow
+  if (!win) {
+    // macOS : application encore ouverte mais sans fenêtre.
+    if (app.isReady()) createWindow()
+    return
+  }
+  if (win.isMinimized()) win.restore()
+  win.focus()
+  win.webContents.send(IPC.openFileRequest)
+}
+
+async function handleTakePendingFile(event: IpcMainInvokeEvent): Promise<OpenedFile | null> {
+  assertTrustedSender(event)
+  const filePath = pendingFile
+  pendingFile = null
+  if (!filePath) return null
+  const file = await readOpenedFile(filePath)
+  lastDirectory = path.dirname(filePath)
   if (file.kind === 'project') await recent.add(filePath)
   return file
 }
@@ -417,6 +451,7 @@ function registerIpc(): void {
   })
   ipcMain.handle(IPC.openFile, handleOpenFile)
   ipcMain.handle(IPC.openRecent, handleOpenRecent)
+  ipcMain.handle(IPC.takePendingFile, handleTakePendingFile)
   ipcMain.handle(IPC.listRecent, async (event) => {
     assertTrustedSender(event)
     return recent.list()
@@ -470,19 +505,44 @@ app.on('before-quit', () => {
   quitting = true
 })
 
-app.whenReady().then(() => {
-  recent = new RecentFiles(path.join(app.getPath('userData'), 'recent.json'))
-  settings = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'))
-  // Aucune permission (caméra, notifications…) n'est nécessaire.
-  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
-  buildMenu()
-  registerIpc()
-  createWindow()
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
+// macOS : fichier ouvert depuis le Finder ou glissé sur l'icône (peut arriver avant « ready »).
+app.on('open-file', (event, filePath) => {
+  event.preventDefault()
+  requestOpenFile(filePath)
 })
+
+// Une seule instance : un fichier ouvert alors que Pixelatelier tourne déjà
+// s'ouvre dans la fenêtre existante au lieu de lancer un second exemplaire.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv, workingDirectory) => {
+    const [file] = filesFromArgv(argv.slice(1), workingDirectory)
+    if (file) requestOpenFile(file)
+    else if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+
+  // Windows / Linux : fichier passé au premier lancement.
+  const [startupFile] = filesFromArgv(process.argv.slice(app.isPackaged ? 1 : 2), process.cwd())
+  if (startupFile) pendingFile = startupFile
+
+  app.whenReady().then(() => {
+    recent = new RecentFiles(path.join(app.getPath('userData'), 'recent.json'))
+    settings = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'))
+    // Aucune permission (caméra, notifications…) n'est nécessaire.
+    session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
+    buildMenu()
+    registerIpc()
+    createWindow()
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+  })
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin' || quitting) app.quit()

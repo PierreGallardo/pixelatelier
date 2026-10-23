@@ -149,6 +149,12 @@ export function App(): React.JSX.Element {
     [commands]
   )
 
+  // Fichier ouvert depuis le système : au démarrage, puis à chaque nouvelle demande.
+  useEffect(() => {
+    void actions.openPendingFile()
+    return api.onOpenFileRequest(() => void actions.openPendingFile())
+  }, [actions])
+
   // Recherche automatique d'une nouvelle version (quelques secondes après le démarrage).
   useEffect(() => {
     void updates.start((text, kind) => editor.notify(text, kind))
